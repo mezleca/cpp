@@ -21,6 +21,8 @@ if(MSVC)
     add_compile_options(/MP)
 endif()
 
+# copy compile_commands so clang show files from include dir
+# this sucks but idk any other way to make ts work
 if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json)
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E create_symlink
@@ -51,6 +53,7 @@ set(CPR_CURL_USE_LIBPSL FALSE)
 set(CPR_CURL_USE_LIBPSL FALSE CACHE BOOL "" FORCE)
 
 # add dependencies
+add_subdirectory(vendor/fmt)
 add_subdirectory(vendor/realm-cpp)
 add_subdirectory(vendor/cpr)
 add_subdirectory(vendor/glfw)
@@ -63,7 +66,12 @@ add_executable(${PROJECT_NAME}
     ${IMGUI_BACKEND_SOURCES}
 )
 
+if(DEFINED OUTPUT_NAME)
+    set_target_properties(${PROJECT_NAME} PROPERTIES OUTPUT_NAME ${OUTPUT_NAME})
+endif()
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    fmt::fmt
     nlohmann_json
     cpr
     cpprealm
@@ -74,6 +82,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/fmt/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cpr/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/json/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/realm-cpp/include

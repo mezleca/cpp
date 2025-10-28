@@ -1,3 +1,7 @@
+#include "cpr/api.h"
+#include "cpr/cprtypes.h"
+#include "cpr/response.h"
+#include <cstdlib>
 #include <glad/glad.h>
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 #define IMGUI_DEFINE_MATH_OPERATORS
@@ -6,6 +10,8 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <iostream>
+#include <fmt/format.h>
+#include <cpr/cpr.h>
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
@@ -75,26 +81,43 @@ void GUI::process_input() {
     glfwPollEvents();
 }
 
+std::string get_test_data() {
+    std::string url = fmt::format("https://jsonplaceholder.typicode.com/comments/{}", (int)rand() % 500);
+    std::cout << fmt::format("fetching: {}", url) << "\n";
+    cpr::Response res = cpr::Get(cpr::Url("https://jsonplaceholder.typicode.com/comments/3"));
+    std::cout << fmt::format("raw_response:\n{}", res.text) << "\n";
+
+    return res.text;
+}
+
 void GUI::render() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::Begin("controls");
-    static float slider_value = 0.5f;
-    ImGui::SliderFloat("value", &slider_value, 0.0f, 1.0f);
-
-    static bool checkbox = true;
-    ImGui::Checkbox("enabled", &checkbox);
-
     static int counter = 0;
-    if (ImGui::Button("click")) counter++;
-    ImGui::Text("counter: %d", counter);
-    ImGui::Text("fps: %.1f", ImGui::GetIO().Framerate);
-    ImGui::End();
+    static std::string raw_output = "";
 
-    ImGui::Begin("info");
-    ImGui::Text("OpenGL: %s", glGetString(GL_VERSION));
+    ImGui::Begin("controls");
+    {
+        ImGui::Text("OpenGL: %s", glGetString(GL_VERSION));
+        ImGui::Text("fps: %.1f", ImGui::GetIO().Framerate);
+        ImGui::Separator();
+
+        if (ImGui::Button("click")) counter++;
+        ImGui::Text("counter: %d", counter);
+
+        if (ImGui::Button("do random request")) {
+            raw_output = get_test_data();
+        }
+
+        if (!raw_output.empty()) {
+            ImGui::Separator();
+            ImGui::Text("raw data:");
+            ImGui::Text("%s", raw_output.c_str());
+            ImGui::Separator();
+        }
+    }    
     ImGui::End();
 
     ImGui::Render();
