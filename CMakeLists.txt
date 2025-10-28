@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 project(test VERSION 0.0.1)
 
-cmake_policy(SET CMP0177 NEW)
-
 # fallback to Release mode
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -18,7 +16,7 @@ set(IMGUI_BACKEND_SOURCES
 )
 
 if(MSVC)
-    add_compile_options(/MP)  # compila vários arquivos em paralelo
+    add_compile_options(/MP)
 endif()
 
 # use c++ 17
