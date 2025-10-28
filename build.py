@@ -5,6 +5,12 @@ import shutil
 import subprocess
 import platform
 
+"""
+    script to build my shit
+    windows(msvc)
+    linux (docker + gcc)
+"""
+
 BUILD_DIR = "./build/"
 SOURCE_DIR = "./"
 LINUX_DOCKER_IMAGE = "linux-builder"
@@ -62,30 +68,47 @@ def check_docker_image():
     if result.returncode != 0:
         build_docker_image()
 
+
 def configure_linux():
     check_docker_image()
-
     cache = os.path.join(BUILD_DIR, "CMakeCache.txt")
     if os.path.exists(cache):
         os.remove(cache)
-
     os.makedirs(BUILD_DIR, exist_ok=True)
 
+    uid = os.getuid()
+    gid = os.getgid()
+    current_dir = os.path.abspath(".")
+
     docker_cmd = (
-        f'docker run --rm -v "{os.getcwd()}:/workspace" {LINUX_DOCKER_IMAGE} bash -c '
+        f"docker run --rm "
+        f"--user {uid}:{gid} "
+        f'-v "{current_dir}:{current_dir}" '
+        f'-w "{current_dir}" '
+        f"{LINUX_DOCKER_IMAGE} bash -c "
         f'"cmake -B {BUILD_DIR} -S {SOURCE_DIR}"'
     )
     _ = run(docker_cmd)
+
 
 def build_linux():
     check_docker_image()
     configure_linux()
 
+    uid = os.getuid()
+    gid = os.getgid()
+    current_dir = os.path.abspath(".")
+
     docker_cmd = (
-        f'docker run --rm -v "{os.getcwd()}:/workspace" {LINUX_DOCKER_IMAGE} bash -c '
+        f"docker run --rm "
+        f"--user {uid}:{gid} "
+        f'-v "{current_dir}:{current_dir}" '
+        f'-w "{current_dir}" '
+        f"{LINUX_DOCKER_IMAGE} bash -c "
         f'"cd {BUILD_DIR} && make -j$(nproc)"'
     )
     _ = run(docker_cmd)
+
 
 def configure_windows():
     cache = os.path.join(BUILD_DIR, "CMakeCache.txt")
@@ -96,9 +119,11 @@ def configure_windows():
 
     _ = run(f'cmake -G "Visual Studio 17 2022" -A x64 -B {BUILD_DIR} -S {SOURCE_DIR}')
 
+
 def build_windows():
     configure_windows()
     _ = run(f"cmake --build {BUILD_DIR} --config Release -j")
+
 
 def configure_project():
     system = platform.system()
@@ -112,6 +137,7 @@ def configure_project():
         configure_windows()
     else:
         sys.exit(1)
+
 
 def build_project():
     system = platform.system()
