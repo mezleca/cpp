@@ -34,15 +34,7 @@ set(REALM_CPP_NO_TESTS TRUE CACHE BOOL "" FORCE)
 add_subdirectory(vendor/realm-cpp)
 add_subdirectory(vendor/glfw)
 add_subdirectory(vendor/glad)
-
-if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Linux")
-    find_package(X11 REQUIRED COMPONENTS Xi)
-    target_include_directories(${PROJECT_NAME} PUBLIC ${X11_INCLUDE_DIR})
-    target_link_libraries(${PROJECT_NAME} PRIVATE
-        ${X11_LIBRARIES}
-        ${X11_Xi_LIB}
-    )
-endif()
+add_subdirectory(vendor/json)
 
 add_executable(${PROJECT_NAME}
     ${SOURCES}
@@ -51,6 +43,7 @@ add_executable(${PROJECT_NAME}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    nlohmann_json
     cpprealm
     glad
     glfw
@@ -59,6 +52,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/json/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/realm-cpp/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glfw/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/
