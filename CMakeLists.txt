@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
-project(test VERSION 0.0.1)
+project(template VERSION 0.0.1)
 
+# vscodium uses clang
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # fallback to Release mode
@@ -10,12 +11,7 @@ endif()
 
 # get source files
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
-file(GLOB IMGUI_SOURCES "vendor/imgui/*.cpp")
-
-set(IMGUI_BACKEND_SOURCES
-    "vendor/imgui/backends/imgui_impl_glfw.cpp"
-    "vendor/imgui/backends/imgui_impl_opengl3.cpp"
-)
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.hpp")
 
 if(MSVC)
     add_compile_options(/MP)
@@ -31,12 +27,9 @@ if(EXISTS ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json)
     )
 endif()
 
-# use c++ 17
 set(CMAKE_CXX_STANDARD 17)
 set(BUILD_TESTING OFF CACHE BOOL "Build tests" FORCE)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-find_package(OpenGL REQUIRED)
 
 # nuh uh
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
@@ -54,16 +47,12 @@ set(CPR_CURL_USE_LIBPSL FALSE CACHE BOOL "" FORCE)
 
 # add dependencies
 add_subdirectory(vendor/fmt)
-add_subdirectory(vendor/realm-cpp)
 add_subdirectory(vendor/cpr)
-add_subdirectory(vendor/glfw)
-add_subdirectory(vendor/glad)
 add_subdirectory(vendor/json)
 
 add_executable(${PROJECT_NAME}
     ${SOURCES}
-    ${IMGUI_SOURCES}
-    ${IMGUI_BACKEND_SOURCES}
+    ${HEADERS}
 )
 
 if(DEFINED OUTPUT_NAME)
@@ -74,21 +63,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     fmt::fmt
     nlohmann_json
     cpr
-    cpprealm
-    glad
-    glfw
-    OpenGL::GL
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/fmt/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cpr/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/json/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/realm-cpp/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glfw/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/imgui/
-    ${CMAKE_CURRENT_SOURCE_DIR}/vendor/glad/include
 )
 
 add_custom_target(copy_compile_commands ALL
