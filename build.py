@@ -3,8 +3,12 @@
     simple python script to build my c++ projects
     it has all the lazy commands for build, clean, etc
 
-    it uses docker to build on linux (uses the DockerFile on root dir)
+    it uses docker(gcc) to build on linux
     and msvc for windows
+
+    - compilers (msvc windows, gcc12 linux)
+    - cmake 
+    - ninja  
 """
 
 import os
@@ -12,39 +16,23 @@ import sys
 import shutil
 import subprocess
 import platform
+import argparse
 
 BUILD_DIR = "./build/"
 SOURCE_DIR = "./"
 LINUX_DOCKER_IMAGE = "linux-builder"
 BINARY_NAME = "app"
 
-
 def run(cmd: str, check=True):
+    print(f"exec: {cmd}")
     result = subprocess.run(cmd, shell=True)
     if check and result.returncode != 0:
         print(f"command failed with exit code {result.returncode}")
         sys.exit(result.returncode)
     return result.returncode
 
-
-def show_help():
-    print(f"Usage: {sys.argv[0]} [OPTION]")
-    print("")
-    print("Options:")
-    print("  --build         Build the project")
-    print("  --build-run     Build and run the binary")
-    print("  --configure     Configure the project")
-    print("  --clean-build   Remove build directory and build")
-    print("  --clear         Clear build directory")
-    print("  --run           Run the binary")
-    print("  --init          Initialize and fetch repositories recursively")
-    print("  --docker-build  Build Docker image (Linux only)")
-    print("  -h, --help      Show this help message")
-
-
 def init_repos():
     return run("git submodule update --init --recursive")
-
 
 def clean_build_dir():
     if not os.path.exists(BUILD_DIR):
@@ -63,14 +51,12 @@ def clean_build_dir():
             print("cant remove build directory, permission denied")
             return 1
 
-
 def build_docker_image():
     if platform.system() != "Linux":
         return 1
 
     print("building docker image...")
     return run(f"docker build -t {LINUX_DOCKER_IMAGE} .")
-
 
 def check_docker_image():
     result = subprocess.run(
@@ -83,13 +69,13 @@ def check_docker_image():
         return build_docker_image()
     return 0
 
-
-def configure_linux():
+def configure_linux(debug: bool):
     ret = check_docker_image()
     if ret != 0:
         return ret
 
     cache = os.path.join(BUILD_DIR, "CMakeCache.txt")
+    
     if os.path.exists(cache):
         os.remove(cache)
 
@@ -99,25 +85,45 @@ def configure_linux():
     gid = os.getgid()
     current_dir = os.path.abspath(".")
 
+    build_type = "Debug" if debug else "Release"
+    
     docker_cmd = (
         f"docker run --rm "
         f"--user {uid}:{gid} "
         f'-v "{current_dir}:{current_dir}" '
         f'-w "{current_dir}" '
         f"{LINUX_DOCKER_IMAGE} bash -c "
-        f'"cmake -B {BUILD_DIR} -S {SOURCE_DIR} -DOUTPUT_NAME={BINARY_NAME}"'
+        f'"cmake -G Ninja -B {BUILD_DIR} -S {SOURCE_DIR} '
+        f'-DCMAKE_BUILD_TYPE={build_type} -DOUTPUT_NAME={BINARY_NAME}"'
     )
     return run(docker_cmd)
 
+def get_cpu_count():
+    system = platform.system()
+    
+    if system == "Linux":
+        cores_cmd = f"docker run --rm {LINUX_DOCKER_IMAGE} bash -c 'nproc'"
+        result = subprocess.run(cores_cmd, shell=True, capture_output=True, text=True)
+        cores = result.stdout.strip()
+        return int(cores) if cores.isdigit() else os.cpu_count() or 4
+    else:
+        return os.cpu_count() or 4
 
-def build_linux():
+
+def build_linux(debug: bool):
     ret = check_docker_image()
     if ret != 0:
         return ret
 
+    if not os.path.exists(BUILD_DIR):
+        configure_linux(debug)
+
     uid = os.getuid()
     gid = os.getgid()
     current_dir = os.path.abspath(".")
+    cores = get_cpu_count()
+
+    print(f"building with {cores} cores...")
 
     docker_cmd = (
         f"docker run --rm "
@@ -125,51 +131,57 @@ def build_linux():
         f'-v "{current_dir}:{current_dir}" '
         f'-w "{current_dir}" '
         f"{LINUX_DOCKER_IMAGE} bash -c "
-        f'"cd {BUILD_DIR} && make -j$(nproc)"'
+        f'"ninja -C {BUILD_DIR} -j{cores}"'
     )
+    
+    print(f"exec: {docker_cmd}")
     return run(docker_cmd)
 
-
-def configure_windows():
+def configure_windows(debug: bool):
     cache = os.path.join(BUILD_DIR, "CMakeCache.txt")
+
     if os.path.exists(cache):
         os.remove(cache)
 
     os.makedirs(BUILD_DIR, exist_ok=True)
+
+    build_type = "Debug" if debug else "Release"
 
     return run(
-        f'cmake -G "Visual Studio 17 2022" -A x64 '
-        f'-B {BUILD_DIR} -S {SOURCE_DIR} -DOUTPUT_NAME={BINARY_NAME}'
+        f'cmake -G Ninja '
+        f'-B {BUILD_DIR} -S {SOURCE_DIR} -A x64 '
+        f'-DCMAKE_BUILD_TYPE={build_type} -DOUTPUT_NAME={BINARY_NAME}'
     )
 
+def build_windows(debug: bool):
+    if not os.path.exists(BUILD_DIR):
+        configure_windows(debug)
 
-def build_windows():
-    return run(f"cmake --build {BUILD_DIR} --config Release -j")
+    cores = get_cpu_count()
+    print(f"building with {cores} cores...")
+    return run(f'ninja -C {BUILD_DIR} -j{cores}')
 
-
-def configure_project():
+def configure_project(debug: bool):
     system = platform.system()
 
     if system == "Linux":
-        return configure_linux()
+        return configure_linux(debug)
     elif system == "Windows":
-        return configure_windows()
+        return configure_windows(debug)
     else:
         print(f"unsupported platform: {system}")
         return 1
 
-
-def build_project():
+def build_project(debug: bool):
     system = platform.system()
 
     if system == "Linux":
-        return build_linux()
+        return build_linux(debug)
     elif system == "Windows":
-        return build_windows()
+        return build_windows(debug)
     else:
         print(f"unsupported platform: {system}")
         return 1
-
 
 def run_binary():
     system = platform.system()
@@ -192,39 +204,54 @@ def run_binary():
         print(f"unsupported platform: {system}")
         return 1
 
-
-if len(sys.argv) == 1:
-    show_help()
-    sys.exit(0)
-
-opt = sys.argv[1]
-exit_code = 0
-
-if opt == "--build":
-    exit_code = build_project()
-elif opt == "--build-run":
-    exit_code = build_project()
-    if exit_code == 0:
+def main():
+    parser = argparse.ArgumentParser(
+        description="build script for c++ projects"
+    )
+    
+    parser.add_argument(
+        "command",
+        choices=["build", "configure", "clean", "run", "init", "docker-build"],
+        help="command to execute"
+    )
+    
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="build in debug mode"
+    )
+    
+    parser.add_argument(
+        "--run",
+        action="store_true",
+        help="run the binary after building"
+    )
+    
+    args = parser.parse_args()
+    
+    exit_code = 0
+    
+    if args.command == "build":
+        exit_code = build_project(args.debug)
+        if exit_code == 0 and args.run:
+            exit_code = run_binary()
+            
+    elif args.command == "configure":
+        exit_code = configure_project(args.debug)
+        
+    elif args.command == "clean":
+        exit_code = clean_build_dir()
+        
+    elif args.command == "run":
         exit_code = run_binary()
-elif opt == "--configure":
-    exit_code = configure_project()
-elif opt == "--clear":
-    exit_code = clean_build_dir()
-elif opt == "--clean-build":
-    exit_code = clean_build_dir()
-    if exit_code == 0:
-        exit_code = build_project()
-elif opt == "--run":
-    exit_code = run_binary()
-elif opt == "--docker-build":
-    exit_code = build_docker_image()
-elif opt == "--init":
-    exit_code = init_repos()
-elif opt in ("-h", "--help"):
-    show_help()
-else:
-    print(f"unknown option: {opt}")
-    show_help()
-    exit_code = 1
+        
+    elif args.command == "docker-build":
+        exit_code = build_docker_image()
+        
+    elif args.command == "init":
+        exit_code = init_repos()
+    
+    sys.exit(exit_code)
 
-sys.exit(exit_code)
+if __name__ == "__main__":
+    main()
