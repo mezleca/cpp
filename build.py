@@ -55,7 +55,7 @@ def run(cmd: str, check: bool = True) -> int:
 def download_with_progress(url: str, destination: Path) -> bool:
     try:
         print(f"downloading from {url}...")
-        response = requests.get(url, stream=True)
+        response = requests.get(url, stream=True, timeout=30)
         response.raise_for_status()
         
         total_size = int(response.headers.get('content-length', 0))
@@ -119,6 +119,11 @@ def init() -> int:
     print("extracting gcc...")
     try:
         with tarfile.open(tar_path, 'r:gz') as tar:
+            # validate members to prevent path traversal
+            for member in tar.getmembers():
+                member_path = (EXTERNAL_DIR / member.name).resolve()
+                if not str(member_path).startswith(str(EXTERNAL_DIR.resolve())):
+                    raise ValueError(f"attempted path traversal: {member.name}")
             tar.extractall(path=EXTERNAL_DIR)
     except Exception as e:
         print(f"failed to extract gcc: {e}")
@@ -192,7 +197,6 @@ def configure_windows(debug: bool) -> int:
         f"cmake -G Ninja "
         f"-B {BUILD_DIR} "
         f"-S {SOURCE_DIR} "
-        f"-A x64 "
         f"-DCMAKE_BUILD_TYPE={build_type} "
         f"-DOUTPUT_NAME={BINARY_NAME}"
     )
@@ -239,8 +243,7 @@ def run_binary() -> int:
         print(f"binary not found at {binary}")
         print("build the project first")
         return 1
-    
-    print(f"running {binary}...")
+
     return run(str(binary))
 
 def main():
