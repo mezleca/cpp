@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import platform
 import argparse
+import tarfile
 import requests
 
 from pathlib import Path
@@ -37,7 +38,13 @@ SYSTEM = platform.system()
 
 def run(cmd: str, check: bool = True) -> int:
     print(f"exec: {cmd}")
-    result = subprocess.run(cmd, shell=True)
+    
+    result = subprocess.run(
+        cmd, 
+        shell=True,
+        # windows needs this to handle paths correctly
+        cwd=str(CWD) if SYSTEM == "Windows" else None
+    )
     
     if check and result.returncode != 0:
         print(f"command failed with exit code {result.returncode}")
@@ -75,13 +82,7 @@ def download_with_progress(url: str, destination: Path) -> bool:
         return False
 
 def check_tool_exists(tool: str) -> bool:
-    """check if a tool exists in PATH"""
-    result = subprocess.run(
-        f"which {tool}" if SYSTEM != "Windows" else f"where {tool}",
-        shell=True,
-        capture_output=True
-    )
-    return result.returncode == 0
+    return shutil.which(tool) is not None
 
 def init() -> int:
     print("initializing submodules...")
@@ -101,7 +102,6 @@ def init() -> int:
     
     # only download gcc on linux
     if SYSTEM != "Linux":
-        print("skipping gcc download (not linux)")
         return 0
     
     # check if gcc already exists
@@ -117,8 +117,11 @@ def init() -> int:
     
     # extract
     print("extracting gcc...")
-    if run(f"tar -xzf {tar_path} -C {EXTERNAL_DIR}") != 0:
-        print("failed to extract gcc")
+    try:
+        with tarfile.open(tar_path, 'r:gz') as tar:
+            tar.extractall(path=EXTERNAL_DIR)
+    except Exception as e:
+        print(f"failed to extract gcc: {e}")
         return 1
     
     # cleanup tar file
@@ -218,7 +221,16 @@ def run_binary() -> int:
     if SYSTEM == "Linux":
         binary = BUILD_DIR / BINARY_NAME
     elif SYSTEM == "Windows":
-        binary = BUILD_DIR / "Release" / f"{BINARY_NAME}.exe"
+        candidates = [
+            BUILD_DIR / f"{BINARY_NAME}.exe",
+            BUILD_DIR / "Release" / f"{BINARY_NAME}.exe",
+            BUILD_DIR / "Debug" / f"{BINARY_NAME}.exe",
+        ]
+        binary = next((path for path in candidates if path.exists()), None)
+        if binary is None:
+            print("binary not found in any expected location")
+            print("build the project first")
+            return 1
     else:
         print(f"unsupported platform: {SYSTEM}")
         return 1
