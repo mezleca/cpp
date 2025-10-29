@@ -2,6 +2,7 @@ build/
 imgui.ini
 .cache
 compile_commands.json
+external/
 
 # Prerequisites
 *.d
