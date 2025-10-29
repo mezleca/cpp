@@ -1,12 +1,13 @@
 #pragma once
 
+#include "imgui_internal.h"
 #include <GLFW/glfw3.h>
 
 class GUI {
 private:
+    ImGuiContext* ctx;
     GLFWwindow* window;
     bool running;
-
 public:
     GUI();
 

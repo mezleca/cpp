@@ -1,6 +1,6 @@
 #include "pool.hpp"
 
-ThreadPool::ThreadPool(int count) {
+void ThreadPool::initialize(int count) {
     for (int i = 0; i < count; i++) {
         // add new worker
         workers.emplace_back([this]() {
@@ -13,19 +13,20 @@ ThreadPool::ThreadPool(int count) {
 
                     // use condition variable to make threads go zzz until we actually have a task to do
                     cv.wait(lock, [this] { 
-                        return !tasks.empty();
+                        return stop || !tasks.empty();
                     });
 
-                    if (tasks.empty()) {
-                        return;
+                    // ensure we have a task
+                    if (stop) {
+                        break;
                     }
 
                     // move task from queue to var
                     task = std::move(tasks.front());
 
-                    // since we moved the task data to the var
-                    // queue will still hold the pointer but now the pointer points to nothing
-                    // so lets remove it to prevent future errors
+                    // if i recall correctly "move" moves the pointer data from the queue
+                    // but the pointer is still there pointing to nothing
+                    // so remove it anyway
                     tasks.pop();
                 }
 
@@ -37,6 +38,8 @@ ThreadPool::ThreadPool(int count) {
 };
 
 ThreadPool::~ThreadPool() {
+    stop = true;
+
     // wake up all lazy ass threads
     cv.notify_all();
 
@@ -44,13 +47,4 @@ ThreadPool::~ThreadPool() {
     for (std::thread& t : workers) {
         t.join();
     }
-};
-
-template<class T>
-void ThreadPool::enqueue(T&& f) {
-    {
-        std::unique_lock<std::mutex> lock(queue_mutex);
-        tasks.emplace(std::forward<T>(f));
-    }
-    cv.notify_one();
 };

@@ -7,6 +7,7 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
 #include "gui.hpp"
+#include "../threading/pool.hpp"
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_opengl3.h>
 #include <iostream>
@@ -45,7 +46,7 @@ bool GUI::init() {
     }
 
     IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
+    ctx = ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
@@ -89,7 +90,6 @@ std::string get_test_data() {
 
     return res.text;
 }
-
 void GUI::render() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
@@ -108,7 +108,9 @@ void GUI::render() {
         ImGui::Text("counter: %d", counter);
 
         if (ImGui::Button("do random request")) {
-            raw_output = get_test_data();
+            pool.enqueue([]() {
+                raw_output = get_test_data();
+            });
         }
 
         if (!raw_output.empty()) {
