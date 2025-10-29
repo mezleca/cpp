@@ -1,5 +1,6 @@
+#include <cstdlib>
 #include <iostream>
-#include <gui.hpp>
+#include "ui/gui.hpp"
 
 int main() {
     GUI gui;

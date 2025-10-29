@@ -10,6 +10,7 @@ endif()
 
 # get source files
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
+file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.hpp")
 file(GLOB IMGUI_SOURCES "vendor/imgui/*.cpp")
 
 set(IMGUI_BACKEND_SOURCES
@@ -62,6 +63,7 @@ add_subdirectory(vendor/json)
 
 add_executable(${PROJECT_NAME}
     ${SOURCES}
+    ${HEADERS}
     ${IMGUI_SOURCES}
     ${IMGUI_BACKEND_SOURCES}
 )
@@ -81,7 +83,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/fmt/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/cpr/include
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/json/include

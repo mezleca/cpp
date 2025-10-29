@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     libssl-dev \
     zlib1g-dev \
     git \
+    doxygen \
     cmake \
     gcc-12 \
     g++-12 \

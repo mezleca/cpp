@@ -34,7 +34,6 @@ def show_help():
     print("  --build         Build the project")
     print("  --build-run     Build and run the binary")
     print("  --configure     Configure the project")
-    print("  --clean-build   Remove build directory and build")
     print("  --clear         Clear build directory")
     print("  --run           Run the binary")
     print("  --init          Initialize and fetch repositories recursively")
@@ -90,6 +89,7 @@ def configure_linux():
         return ret
 
     cache = os.path.join(BUILD_DIR, "CMakeCache.txt")
+    
     if os.path.exists(cache):
         os.remove(cache)
 
@@ -112,8 +112,12 @@ def configure_linux():
 
 def build_linux():
     ret = check_docker_image()
+
     if ret != 0:
         return ret
+
+    if not os.path.exists(BUILD_DIR):
+        configure_linux()
 
     uid = os.getuid()
     gid = os.getgid()
@@ -132,6 +136,7 @@ def build_linux():
 
 def configure_windows():
     cache = os.path.join(BUILD_DIR, "CMakeCache.txt")
+
     if os.path.exists(cache):
         os.remove(cache)
 
@@ -144,6 +149,9 @@ def configure_windows():
 
 
 def build_windows():
+    if not os.path.exists(BUILD_DIR):
+        configure_windows()
+
     return run(f"cmake --build {BUILD_DIR} --config Release -j")
 
 
@@ -209,8 +217,6 @@ elif opt == "--build-run":
 elif opt == "--configure":
     exit_code = configure_project()
 elif opt == "--clear":
-    exit_code = clean_build_dir()
-elif opt == "--clean-build":
     exit_code = clean_build_dir()
     if exit_code == 0:
         exit_code = build_project()
