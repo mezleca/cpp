@@ -3,6 +3,8 @@
 #include "cpr/response.h"
 #include <cstdlib>
 #include <glad/glad.h>
+#include <memory>
+#include <mutex>
 #define IMGUI_IMPL_OPENGL_LOADER_GLAD
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include <imgui.h>
@@ -13,12 +15,13 @@
 #include <iostream>
 #include <fmt/format.h>
 #include <cpr/cpr.h>
+#include "../reader/binary.hpp"
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 #define GLSL_VERSION "#version 130"
 
-GUI::GUI() : window(nullptr), running(false) {}
+GUI::GUI() {}
 
 bool GUI::init() {
     if (!glfwInit()) {
@@ -63,7 +66,11 @@ void GUI::cleanup() {
     if (window) {
         ImGui_ImplOpenGL3_Shutdown();
         ImGui_ImplGlfw_Shutdown();
-        ImGui::DestroyContext();
+
+        if (ctx) {
+            ImGui::DestroyContext(ctx);
+            ctx = nullptr;
+        }
 
         glfwDestroyWindow(window);
         glfwTerminate();
@@ -90,13 +97,26 @@ std::string get_test_data() {
 
     return res.text;
 }
+
+struct basic_data {
+    int version;
+    int count;
+    bool account_unlocked;
+    long unlocked_date;
+    std::string player_name;
+};
+
 void GUI::render() {
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
     static int counter = 0;
+    static char location[256];
+    static basic_data data;
     static std::string raw_output = "";
+    static std::string data_status = "";
+    static std::mutex data_mtx;
 
     ImGui::Begin("controls");
     {
@@ -106,6 +126,41 @@ void GUI::render() {
 
         if (ImGui::Button("click")) counter++;
         ImGui::Text("counter: %d", counter);
+
+        ImGui::Separator();
+        ImGui::InputText("osu data", location, sizeof(location));
+
+        if (data_status != "") {
+            ImGui::Text("status: %s", data_status.c_str());
+        }
+
+        if (data.version) {
+            ImGui::Text("version: %i", data.version);
+            ImGui::Text("folder count: %i", data.count);
+            ImGui::Text("unlocked: %s", data.account_unlocked ? "true" : "false");
+            ImGui::Text("player: %s", data.player_name.c_str());
+        }
+
+        if (ImGui::Button("read")) {
+            pool.enqueue([]() {
+                {
+                    std::lock_guard<std::mutex> lock(data_mtx);
+                    auto buffer = binary_reader::file(location);
+
+                    if (buffer == nullptr) {
+                        data_status = "failed to read (invalid buffer)";
+                        return;
+                    }
+
+                    int offset = 0;
+                    data.version = binary_reader::read<int>(buffer.get(), &offset);
+                    data.count = binary_reader::read<int>(buffer.get(), &offset);
+                    data.account_unlocked = binary_reader::read<bool>(buffer.get(), &offset);
+                    data.unlocked_date = binary_reader::read<long>(buffer.get(), &offset);
+                    data.player_name = binary_reader::osu_string(buffer.get(), &offset);
+                }
+            });
+        }
 
         if (ImGui::Button("do random request")) {
             pool.enqueue([]() {

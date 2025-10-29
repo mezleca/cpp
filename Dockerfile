@@ -2,6 +2,7 @@ FROM debian:trixie
 
 RUN apt-get update && apt-get install -y \
     build-essential \
+    ninja-build \
     libterm-readline-perl-perl \
     libcurl4-openssl-dev \
     libuv1-dev \

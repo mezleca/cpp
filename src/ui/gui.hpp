@@ -5,8 +5,8 @@
 
 class GUI {
 private:
-    ImGuiContext* ctx;
-    GLFWwindow* window;
+    ImGuiContext* ctx = nullptr;
+    GLFWwindow* window = nullptr;
     bool running;
 public:
     GUI();

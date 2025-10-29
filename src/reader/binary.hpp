@@ -1,9 +1,10 @@
 #pragma once
 #include <cstring>
+#include <memory>
 #include <string>
 
 namespace binary_reader {
-    char* file(char* location);
+    std::unique_ptr<char[]> file(char* location);
 
     template <typename T>
     T read(char* buffer, int *offset) {
@@ -14,5 +15,5 @@ namespace binary_reader {
     };
     
     int uleb128(char* buffer, int* offset);
-    std::string str();
+    std::string osu_string(char* buffer, int* offset);
 };
