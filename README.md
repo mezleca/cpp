@@ -8,5 +8,5 @@ my c++ project template
 ## build
 build.py provides basic configure, build, and GCC setup on Linux,
 but has the following platform constraints:
-- linux: gcc version (well, the version is defined on the python script but yeah)
-- windows: MSVC (you can use GCC via winlibs is supported but MSVC just works)
+- linux: gcc version (well, you can change the version on the script but yeah)
+- windows: MSVC (you can use GCC via winlibs but MSVC just works)
