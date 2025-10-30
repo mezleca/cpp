@@ -14,7 +14,7 @@ file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS "src/*.cpp")
 file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.hpp")
 
 if(MSVC)
-    add_compile_options(/MP)
+    add_compile_options(/MP /MT)
 endif()
 
 # copy compile_commands so clang show files from include dir
