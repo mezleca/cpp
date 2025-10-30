@@ -15,7 +15,6 @@ file(GLOB_RECURSE HEADERS CONFIGURE_DEPENDS "src/*.hpp")
 
 if(MSVC)
     add_compile_options(/MP)
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 # copy compile_commands so clang show files from include dir

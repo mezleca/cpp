@@ -36,15 +36,12 @@ GPP_PATH = GCC_BIN_DIR / "g++"
 
 SYSTEM = platform.system()
 
-def run(cmd: str, check: bool = True, env: dict[str, str] | None = None, capture: bool = False) -> tuple[int, str]:
+def run(cmd: str, check: bool = True) -> int:
     print(f"exec: {cmd}")
     
     result = subprocess.run(
         cmd, 
         shell=True,
-        env=env,
-        capture_output=capture,
-        text=capture,
         # windows needs this to handle paths correctly
         cwd=str(CWD) if SYSTEM == "Windows" else None
     )
@@ -53,7 +50,7 @@ def run(cmd: str, check: bool = True, env: dict[str, str] | None = None, capture
         print(f"command failed with exit code {result.returncode}")
         sys.exit(result.returncode)
     
-    return result.returncode, result.stdout 
+    return result.returncode
 
 def download_with_progress(url: str, destination: Path) -> bool:
     try:
@@ -84,61 +81,13 @@ def download_with_progress(url: str, destination: Path) -> bool:
         print(f"\nerror saving file: {e}")
         return False
 
-# I LOVE WINDOWS MAN I REALLY LOVE WINDOWS
-def find_vcvarsall():
-    base_paths = [
-        r"C:\Program Files\Microsoft Visual Studio",
-        r"C:\Program Files (x86)\Microsoft Visual Studio",
-    ]
-    
-    versions = ["2022", "2019", "2017"]
-    editions = ["BuildTools", "Community", "Professional", "Enterprise", "Preview"]
-    
-    for base_path in base_paths:
-        if not os.path.exists(base_path):
-            continue
-            
-        for version in versions:
-            for edition in editions:
-                vcvarsall = Path(base_path) / version / edition / "VC" / "Auxiliary" / "Build" / "vcvarsall.bat"
-                
-                if vcvarsall.exists():
-                    # print(f"found vcvarsall.bat at: {vcvarsall}")
-                    return str(vcvarsall)
-    
-    return None
-
-def get_msvc_env() -> dict[str, str]:
-    vcvarsall_path = find_vcvarsall()
-
-    if vcvarsall_path == None:
-        print("failed to find vcvarsall.bat...\nmake sure you have build tools installed (2017, 2019 or 2022)")
-        sys.exit(1)
-
-    # run vcvarsall and capture environment variables
-    cmd = f'"{vcvarsall_path}" x64 && set'
-    _, output = run(cmd, capture=True)
-
-    env: dict[str, str] = {}
-
-    for raw_line in output.splitlines():
-        line = raw_line.rstrip()
-        if '=' not in line:
-            continue
-        key, value = line.split('=', 1)
-        if not key:
-            continue
-        env[key] = value
-    
-    return env
-
 def check_tool_exists(tool: str) -> bool:
     return shutil.which(tool) is not None
 
 def init() -> int:
     print("initializing submodules...")
 
-    if run("git submodule update --init --recursive", check=False)[0] != 0:
+    if run("git submodule update --init --recursive", check=False) != 0:
         print("failed to initialize submodules")
         return 1
     
@@ -233,7 +182,7 @@ def configure_linux(debug: bool) -> int:
         f"-DOUTPUT_NAME={BINARY_NAME}"
     )
     
-    return run(cmd)[0]
+    return run(cmd)
 
 def configure_windows(debug: bool) -> int:
     cache = BUILD_DIR / "CMakeCache.txt"
@@ -242,11 +191,8 @@ def configure_windows(debug: bool) -> int:
         cache.unlink()
 
     BUILD_DIR.mkdir(exist_ok=True)
-
-    # 99% of the time i attempt to use mingw i get weird ass errors (mostly due to old gcc version or smtg) 
-    vcvarsall_env = get_msvc_env()
+    
     build_type = "Debug" if debug else "Release"
-
     cmd = (
         f"cmake -G Ninja "
         f"-B {BUILD_DIR} "
@@ -255,7 +201,7 @@ def configure_windows(debug: bool) -> int:
         f"-DOUTPUT_NAME={BINARY_NAME}"
     )
 
-    return run(cmd, env=vcvarsall_env)[0]
+    return run(cmd)
 
 def configure(debug: bool) -> int:
     if SYSTEM == "Linux":
@@ -273,9 +219,7 @@ def build(debug: bool) -> int:
             return 1
     
     cores = get_cpu_count()
-    env = get_msvc_env() if SYSTEM == "Windows" else None
-
-    return run(f"ninja -C {BUILD_DIR} -j{cores}", env=env)[0]
+    return run(f"ninja -C {BUILD_DIR} -j{cores}")
 
 def run_binary() -> int:
     if SYSTEM == "Linux":
@@ -300,7 +244,7 @@ def run_binary() -> int:
         print("build the project first")
         return 1
 
-    return run(str(binary))[0]
+    return run(str(binary))
 
 def main():
     parser = argparse.ArgumentParser(
