@@ -20,7 +20,8 @@ set(IMGUI_BACKEND_SOURCES
 )
 
 if(MSVC)
-    add_compile_options(/MP /MT)
+    add_compile_options(/MP)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 # copy compile_commands so clang show files from include dir

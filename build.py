@@ -36,13 +36,15 @@ GPP_PATH = GCC_BIN_DIR / "g++"
 
 SYSTEM = platform.system()
 
-def run(cmd: str, check: bool = True, env: dict[str, str] | None = None) -> int:
+def run(cmd: str, check: bool = True, env: dict[str, str] | None = None, capture: bool = False) -> tuple[int, str]:
     print(f"exec: {cmd}")
     
     result = subprocess.run(
         cmd, 
         shell=True,
         env=env,
+        capture_output=capture,
+        text=capture,
         # windows needs this to handle paths correctly
         cwd=str(CWD) if SYSTEM == "Windows" else None
     )
@@ -51,7 +53,7 @@ def run(cmd: str, check: bool = True, env: dict[str, str] | None = None) -> int:
         print(f"command failed with exit code {result.returncode}")
         sys.exit(result.returncode)
     
-    return result.returncode
+    return result.returncode, result.stdout 
 
 def download_with_progress(url: str, destination: Path) -> bool:
     try:
@@ -90,7 +92,7 @@ def find_vcvarsall():
     ]
     
     versions = ["2022", "2019", "2017"]
-    editions = ["Community", "BuildTools"]
+    editions = ["BuildTools", "Community", "Professional", "Enterprise", "Preview"]
     
     for base_path in base_paths:
         if not os.path.exists(base_path):
@@ -113,16 +115,20 @@ def get_msvc_env() -> dict[str, str]:
         print("failed to find vcvarsall.bat...\nmake sure you have build tools installed (2017, 2019 or 2022)")
         sys.exit(1)
 
-    # run ts and attempt to capture env
+    # run vcvarsall and capture environment variables
     cmd = f'"{vcvarsall_path}" x64 && set'
-    result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-    
-    # parse vars
+    _, output = run(cmd, capture=True)
+
     env: dict[str, str] = {}
-    for line in result.stdout.split('\n'):
-        if '=' in line:
-            key, _, value = line.partition('=')
-            env[key] = value
+
+    for raw_line in output.splitlines():
+        line = raw_line.rstrip()
+        if '=' not in line:
+            continue
+        key, value = line.split('=', 1)
+        if not key:
+            continue
+        env[key] = value
     
     return env
 
@@ -132,7 +138,7 @@ def check_tool_exists(tool: str) -> bool:
 def init() -> int:
     print("initializing submodules...")
 
-    if run("git submodule update --init --recursive", check=False) != 0:
+    if run("git submodule update --init --recursive", check=False)[0] != 0:
         print("failed to initialize submodules")
         return 1
     
@@ -227,7 +233,7 @@ def configure_linux(debug: bool) -> int:
         f"-DOUTPUT_NAME={BINARY_NAME}"
     )
     
-    return run(cmd)
+    return run(cmd)[0]
 
 def configure_windows(debug: bool) -> int:
     cache = BUILD_DIR / "CMakeCache.txt"
@@ -249,7 +255,7 @@ def configure_windows(debug: bool) -> int:
         f"-DOUTPUT_NAME={BINARY_NAME}"
     )
 
-    return run(cmd, env=vcvarsall_env)
+    return run(cmd, env=vcvarsall_env)[0]
 
 def configure(debug: bool) -> int:
     if SYSTEM == "Linux":
@@ -269,7 +275,7 @@ def build(debug: bool) -> int:
     cores = get_cpu_count()
     env = get_msvc_env() if SYSTEM == "Windows" else None
 
-    return run(f"ninja -C {BUILD_DIR} -j{cores}", env=env)
+    return run(f"ninja -C {BUILD_DIR} -j{cores}", env=env)[0]
 
 def run_binary() -> int:
     if SYSTEM == "Linux":
@@ -294,7 +300,7 @@ def run_binary() -> int:
         print("build the project first")
         return 1
 
-    return run(str(binary))
+    return run(str(binary))[0]
 
 def main():
     parser = argparse.ArgumentParser(
