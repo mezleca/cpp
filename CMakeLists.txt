@@ -20,7 +20,7 @@ set(IMGUI_BACKEND_SOURCES
 )
 
 if(MSVC)
-    add_compile_options(/MP)
+    add_compile_options(/MP /MT)
 endif()
 
 # copy compile_commands so clang show files from include dir
