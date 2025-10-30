@@ -6,7 +6,7 @@ my c++ project template
 - linux: cmake, ninja and prebuilt gcc (from xpack)
 
 ## build
-build.py provides basic (configurue, build, gcc setup on linux)
-but also limits you to:
+build.py provides basic configure, build, and GCC setup on Linux,
+but has the following platform constraints:
 - linux: gcc version (well, the version is defined on the python script but yeah)
-- windows: msvc (gcc is kinda usable on winlibs but msvc just works)
+- windows: MSVC (you can use GCC via winlibs is supported but MSVC just works)
