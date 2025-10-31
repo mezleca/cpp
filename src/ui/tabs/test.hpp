@@ -5,6 +5,8 @@
 class TestTab : public Tab {
 private:
 public:
-    TestTab(QWidget* parent = nullptr);
+    TestTab(QWidget* parent = nullptr, QString name = "test");
     ~TestTab();
+
+    QVBoxLayout* build();
 };
