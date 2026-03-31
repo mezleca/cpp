@@ -1,0 +1,430 @@
+#!/usr/bin/env python3
+
+import os
+import sys
+import shutil
+import subprocess
+import platform
+import argparse
+
+from pathlib import Path
+
+CWD = Path.cwd()
+BUILD_DIR = CWD / "build"
+SOURCE_DIR = CWD
+BINARY_NAME = "app"
+QT_PLUGINS_DIR_NAME = "plugins"
+QT_QML_DIR_NAME = "qml"
+MINGW_RUNTIME_DLLS = ["libgcc_s_seh-1.dll", "libstdc++-6.dll", "libwinpthread-1.dll"]
+QT_DLL_PREFIX = "Qt6"
+ICU_DLL_PREFIXES = ["icudt", "icuin", "icuuc"]
+
+SYSTEM = platform.system()
+QT_VERSION = "6.6.2"
+OPENSSL_VERSION = "3.4.1"
+OPENSSL_TAG_SUFFIX = "-1"
+MINGW_LINUX_SYSROOT = "/usr/x86_64-w64-mingw32"
+
+def run(cmd: str, check: bool = True, env: dict[str, str] | None = None, capture: bool = False) -> tuple[int, str]:
+    print(f"exec: {cmd}")
+
+    result = subprocess.run(
+        cmd,
+        shell=True,
+        env=env,
+        capture_output=capture,
+        text=capture,
+        cwd=str(CWD) if SYSTEM == "Windows" else None
+    )
+
+    if check and result.returncode != 0:
+        print(f"command failed with exit code {result.returncode}")
+        sys.exit(result.returncode)
+
+    return result.returncode, result.stdout
+
+def run_executable(path: Path) -> int:
+    if SYSTEM == "Linux" and path.suffix.lower() == ".exe":
+        if shutil.which("wine") is None:
+            print("wine not found in PATH")
+            return 1
+        env = build_wine_env()
+        return run(f"wine {path}", env=env)[0]
+    return run(str(path))[0]
+
+def tool_exists(tool: str):
+    if shutil.which(tool) is None:
+        raise Exception(f"{tool} not found in PATH")
+
+def get_qt_mingw_prefix() -> str:
+    return os.environ.get("QT_MINGW_PREFIX", "").strip() or str(Path.home() / "qt" / QT_VERSION / "mingw_64")
+
+def ensure_openssl_windows() -> int:
+    openssl_root = os.environ.get("OPENSSL_ROOT_DIR", "").strip()
+    if openssl_root:
+        return 0
+
+    openssl_root = str(BUILD_DIR / "openssl")
+    crypto = Path(openssl_root) / "lib64" / "libcrypto.a"
+    ssl    = Path(openssl_root) / "lib64" / "libssl.a"
+
+    if crypto.exists() and ssl.exists():
+        return 0
+
+    tag   = os.environ.get("OPENSSL_MINGW_TAG", f"openssl-mingw-{OPENSSL_VERSION}{OPENSSL_TAG_SUFFIX}")
+    asset = f"openssl-{OPENSSL_VERSION}-x64-windows-mingw-static.tar.gz"
+    url     = f"https://github.com/mezleca/rel-builds/releases/download/{tag}/{asset}"
+
+    print(f"downloading openssl: {url}")
+    Path(openssl_root).mkdir(parents=True, exist_ok=True)
+    archive_path = Path(openssl_root) / asset
+
+    if os.name == "nt":
+        run(f"powershell -NoProfile -Command \"Invoke-WebRequest -Uri '{url}' -OutFile '{archive_path}'\"")
+    else:
+        run(f"curl -L -o {archive_path} {url}")
+
+    run(f"tar -xzf {archive_path} -C {openssl_root}")
+
+    if archive_path.exists():
+        archive_path.unlink()
+
+    return 0
+
+def resolve_openssl_paths(openssl_root: str, openssl_include: str) -> tuple[str, str, str] | None:
+    lib64_crypto = Path(openssl_root) / "lib64" / "libcrypto.a"
+    lib64_ssl    = Path(openssl_root) / "lib64" / "libssl.a"
+    lib_crypto   = Path(openssl_root) / "lib"   / "libcrypto.a"
+    lib_ssl      = Path(openssl_root) / "lib"   / "libssl.a"
+
+    if lib64_crypto.exists() and lib64_ssl.exists():
+        include = openssl_include or str(Path(openssl_root) / "include")
+        return str(lib64_crypto), str(lib64_ssl), include
+
+    if lib_crypto.exists() and lib_ssl.exists():
+        include = openssl_include or str(Path(openssl_root) / "include")
+        return str(lib_crypto), str(lib_ssl), include
+
+    print(f"openssl not found: {lib64_crypto} {lib64_ssl} {lib_crypto} {lib_ssl}")
+    return None
+
+def resolve_zlib_paths(is_windows_host: bool) -> tuple[str, str] | None:
+    if is_windows_host:
+        code, lib_out = run("g++ -print-file-name=libz.a", check=False, capture=True)
+        lib_path = lib_out.strip()
+        if code != 0 or not lib_path or lib_path == "libz.a":
+            print("failed to resolve mingw zlib")
+            return None
+        lib_path = lib_path.replace("\\", "/")
+        include_dir = str(Path(lib_path).parent.parent / "include")
+        return lib_path, include_dir
+
+    lib_path = f"{MINGW_LINUX_SYSROOT}/lib/libz.a"
+    include_dir = f"{MINGW_LINUX_SYSROOT}/include"
+    return lib_path, include_dir
+
+def cmake_list(items: list[str]) -> str:
+    return "\\;".join(items)
+
+def init() -> int:
+    print("initializing submodules...")
+
+    if Path("./.gitmodules").exists() and run("git submodule update --init --recursive", check=False)[0] != 0:
+        print("failed to initialize submodules")
+        return 1
+
+    tool_exists("cmake")
+    tool_exists("ninja")
+
+    if SYSTEM == "Windows":
+        tool_exists("gcc")
+        tool_exists("g++")
+        tool_exists("windres")
+    else:
+        tool_exists("clang")
+
+    return 0
+
+def format() -> int:
+    cmd = ["clang-format -i $(rg --files -g '*.{h,hpp,cpp,cc,cxx}' src)"]
+    return run(" ".join(cmd))[0]
+
+def clean() -> int:
+    if not BUILD_DIR.exists():
+        print("build directory doesnt exist")
+        return 0
+
+    print("removing build directory...")
+    try:
+        shutil.rmtree(BUILD_DIR)
+        print("build directory removed")
+        return 0
+    except PermissionError:
+        print("permission denied... try running as admin/sudo")
+        return 1
+
+def get_cpu_count() -> int:
+    if SYSTEM == "Linux":
+        result = subprocess.run("nproc", shell=True, capture_output=True, text=True)
+        cores = result.stdout.strip()
+        return int(cores) if cores.isdigit() else os.cpu_count() or 4
+
+    return os.cpu_count() or 4
+
+def configure_linux(debug: bool) -> int:
+    cache = BUILD_DIR / "CMakeCache.txt"
+
+    if cache.exists():
+        cache.unlink()
+
+    BUILD_DIR.mkdir(exist_ok=True)
+
+    cmd = [
+        "cmake -Wno-dev -G Ninja",
+        f"-B {BUILD_DIR}",
+        f"-S {SOURCE_DIR}",
+        f"-DCMAKE_BUILD_TYPE={'Debug' if debug else 'Release'}",
+        "-DCMAKE_C_COMPILER=clang",
+        "-DCMAKE_CXX_COMPILER=clang++",
+        f"-DOUTPUT_NAME={BINARY_NAME}",
+    ]
+    return run(" ".join(cmd))[0]
+
+def configure_windows(debug: bool) -> int:
+    cache = BUILD_DIR / "CMakeCache.txt"
+
+    if cache.exists():
+        cache.unlink()
+
+    BUILD_DIR.mkdir(exist_ok=True)
+
+    if not os.environ.get("OPENSSL_ROOT_DIR", "").strip() and ensure_openssl_windows() != 0:
+        return 1
+
+    qt_mingw_prefix = get_qt_mingw_prefix()
+    qt_host_path    = os.environ.get("QT_HOST_PATH",    "").strip() or str(Path.home() / "qt" / QT_VERSION / "gcc_64")
+    qt_host_cmake   = os.environ.get("QT_HOST_PATH_CMAKE_DIR", "").strip() or str(Path(qt_host_path) / "lib" / "cmake")
+
+    qt_config = Path(qt_mingw_prefix) / "lib" / "cmake" / "Qt6" / "Qt6Config.cmake"
+
+    if not qt_config.exists():
+        print(f"qt mingw not found: {qt_config}")
+        return 1
+
+    is_windows_host = os.name == "nt"
+    toolchain = None
+    if not is_windows_host:
+        toolchain = SOURCE_DIR / "cmake" / "mingw-cross.cmake"
+
+    openssl_root    = os.environ.get("OPENSSL_ROOT_DIR",       "").strip() or str(BUILD_DIR / "openssl")
+    openssl_crypto  = os.environ.get("OPENSSL_CRYPTO_LIBRARY", "").strip()
+    openssl_ssl     = os.environ.get("OPENSSL_SSL_LIBRARY",    "").strip()
+    openssl_include = os.environ.get("OPENSSL_INCLUDE_DIR",    "").strip()
+
+    if not openssl_crypto or not openssl_ssl:
+        resolved = resolve_openssl_paths(openssl_root, openssl_include)
+        if resolved is None:
+            return 1
+        openssl_crypto, openssl_ssl, openssl_include = resolved
+
+    zlib_paths = resolve_zlib_paths(is_windows_host)
+    if zlib_paths is None:
+        return 1
+    zlib_library, zlib_include = zlib_paths
+
+    if not Path(zlib_library).exists() or not Path(zlib_include).exists():
+        print(f"zlib not found: {zlib_library} {zlib_include}")
+        return 1
+
+    find_root_path = ""
+    if not is_windows_host:
+        find_root_parts = [openssl_root, qt_mingw_prefix, MINGW_LINUX_SYSROOT]
+        find_root_path = cmake_list(find_root_parts)
+
+    cmd = [
+        "cmake -Wno-dev -G Ninja",
+        f"-B {BUILD_DIR}",
+        f"-S {SOURCE_DIR}",
+        f"-DCMAKE_BUILD_TYPE={'Debug' if debug else 'Release'}",
+        *([f"-DCMAKE_TOOLCHAIN_FILE={toolchain}"] if toolchain else []),
+        f"-DOUTPUT_NAME={BINARY_NAME}",
+        "-DREALM_USE_SYSTEM_OPENSSL=ON",
+        f"-DCMAKE_PREFIX_PATH={qt_mingw_prefix}",
+        f"-DQt6_DIR={qt_config.parent}",
+        f"-DQT_HOST_PATH={qt_host_path}",
+        f"-DQT_HOST_PATH_CMAKE_DIR={qt_host_cmake}",
+        *([f"-DCMAKE_FIND_ROOT_PATH={find_root_path}"] if find_root_path else []),
+        f"-DOPENSSL_ROOT_DIR={openssl_root}",
+        *([f"-DOPENSSL_CRYPTO_LIBRARY={openssl_crypto}"] if openssl_crypto else []),
+        *([f"-DOPENSSL_SSL_LIBRARY={openssl_ssl}"]       if openssl_ssl else []),
+        *([f"-DOPENSSL_INCLUDE_DIR={openssl_include}"]   if openssl_include else []),
+        f"-DZLIB_LIBRARY={zlib_library}",
+        f"-DZLIB_LIBRARY_RELEASE={zlib_library}",
+        f"-DZLIB_LIBRARY_DEBUG={zlib_library}",
+        f"-DZLIB_INCLUDE_DIR={zlib_include}",
+    ]
+
+    return run(" ".join(cmd))[0]
+
+def build_wine_env() -> dict[str, str]:
+    env = os.environ.copy()
+
+    qt_mingw_prefix = get_qt_mingw_prefix()
+    qt_bin          = str(Path(qt_mingw_prefix) / "bin")
+    staged_plugins  = BUILD_DIR / QT_PLUGINS_DIR_NAME
+    staged_qml      = BUILD_DIR / QT_QML_DIR_NAME
+    qt_plugins      = str(staged_plugins if staged_plugins.exists() else Path(qt_mingw_prefix) / QT_PLUGINS_DIR_NAME)
+    qt_qml          = str(staged_qml if staged_qml.exists() else Path(qt_mingw_prefix) / QT_QML_DIR_NAME)
+    mingw_bin       = "/usr/x86_64-w64-mingw32/bin"
+
+    winepath_parts = [qt_bin, mingw_bin]
+    existing_winepath = env.get("WINEPATH", "").strip()
+
+    if existing_winepath:
+        winepath_parts.append(existing_winepath)
+
+    env["WINEPATH"]          = ";".join(winepath_parts)
+    env["QT_PLUGIN_PATH"]    = qt_plugins
+    env["QML2_IMPORT_PATH"]  = qt_qml
+
+    return env
+
+def configure(debug: bool, platform: str) -> int:
+    if platform == "windows": return configure_windows(debug)
+    if platform == "linux":   return configure_linux(debug)
+    if SYSTEM == "Linux":     return configure_linux(debug)
+    if SYSTEM == "Windows":   return configure_windows(debug)
+    print(f"unsupported platform: {SYSTEM}")
+    return 1
+
+def build(debug: bool) -> int:
+    if not BUILD_DIR.exists():
+        print("build directory doesnt exist, configuring...")
+        if configure(debug, "auto") != 0:
+            return 1
+
+    cores = get_cpu_count()
+    return run(f"ninja -C {BUILD_DIR} -j{cores}")[0]
+
+def copy_dlls(src_dir: Path, dst_dir: Path, names: list[str]) -> None:
+    for name in names:
+        src = src_dir / name
+        if not src.exists():
+            continue
+        shutil.copy2(src, dst_dir / name)
+
+def copy_matching_dlls(src_dir: Path, dst_dir: Path, prefix: str) -> None:
+    if not src_dir.exists():
+        return
+
+    for entry in src_dir.iterdir():
+        if not entry.is_file():
+            continue
+        if entry.suffix.lower() != ".dll":
+            continue
+        if not entry.name.startswith(prefix):
+            continue
+        shutil.copy2(entry, dst_dir / entry.name)
+
+def stage_windows_runtime(binary_dir: Path) -> None:
+    qt_mingw_prefix = get_qt_mingw_prefix()
+    qt_bin     = Path(qt_mingw_prefix) / "bin"
+    qt_plugins = Path(qt_mingw_prefix) / QT_PLUGINS_DIR_NAME
+    qt_qml     = Path(qt_mingw_prefix) / QT_QML_DIR_NAME
+    mingw_bin  = Path("/usr/x86_64-w64-mingw32/bin")
+
+    binary_dir.mkdir(parents=True, exist_ok=True)
+
+    copy_dlls(mingw_bin, binary_dir, MINGW_RUNTIME_DLLS)
+    copy_matching_dlls(qt_bin, binary_dir, QT_DLL_PREFIX)
+
+    for prefix in ICU_DLL_PREFIXES:
+        copy_matching_dlls(qt_bin, binary_dir, prefix)
+
+    if qt_plugins.exists():
+        shutil.copytree(qt_plugins, binary_dir / QT_PLUGINS_DIR_NAME, dirs_exist_ok=True)
+    if qt_qml.exists():
+        shutil.copytree(qt_qml, binary_dir / QT_QML_DIR_NAME, dirs_exist_ok=True)
+
+def run_binary() -> int:
+    candidates = []
+    if SYSTEM == "Linux":
+        candidates.append(BUILD_DIR / BINARY_NAME)
+        candidates.append(BUILD_DIR / f"{BINARY_NAME}.exe")
+    elif SYSTEM == "Windows":
+        candidates.extend([
+            BUILD_DIR / f"{BINARY_NAME}.exe",
+            BUILD_DIR / "Release" / f"{BINARY_NAME}.exe",
+            BUILD_DIR / "Debug" / f"{BINARY_NAME}.exe",
+        ])
+    else:
+        print(f"unsupported platform: {SYSTEM}")
+        return 1
+
+    binary = next((path for path in candidates if path.exists()), None)
+
+    if binary is None:
+        print("binary not found in any expected location")
+        print("build the project first")
+        return 1
+
+    if binary.suffix.lower() == ".exe":
+        stage_windows_runtime(binary.parent)
+
+    return run_executable(binary)
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="build script for c++ projects",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    _ = parser.add_argument(
+        "command",
+        choices=["init", "configure", "format", "build", "clean", "run", "test"],
+        help="command to execute"
+    )
+
+    _ = parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="use debug build type"
+    )
+
+    _ = parser.add_argument(
+        "--platform",
+        choices=["auto", "linux", "windows", "win"],
+        default="auto",
+        help="override target platform for configure"
+    )
+
+    _ = parser.add_argument(
+        "--run",
+        action="store_true",
+        help="run binary after building"
+    )
+
+    args = parser.parse_args()
+
+    if args.platform == "win":
+        args.platform = "windows"
+
+    commands = {
+        "init":      init,
+        "configure": lambda: configure(args.debug, args.platform),
+        "build":     lambda: build(args.debug),
+        "format":    format,
+        "clean":     clean,
+        "run":       run_binary,
+        "test":      run_binary,
+    }
+
+    exit_code = commands[args.command]()
+
+    if args.command == "build" and exit_code == 0 and args.run:
+        exit_code = run_binary()
+
+    sys.exit(exit_code)
+
+if __name__ == "__main__":
+    main()

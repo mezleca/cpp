@@ -1,4 +1,15 @@
+[submodule "vendor/json"]
+	path = vendor/json
+	url = https://github.com/nlohmann/json.git
+[submodule "vendor/cpr"]
+	path = vendor/cpr
+	url = https://github.com/libcpr/cpr.git
+[submodule "vendor/fmt"]
+	path = vendor/fmt
+	url = https://github.com/fmtlib/fmt.git
 [submodule "vendor/realm-cpp"]
 	path = vendor/realm-cpp
-	url = https://github.com/realm/realm-cpp.git
-	branch = community
+	url = https://github.com/mezleca/realm-cpp.git
+[submodule "vendor/miniz"]
+	path = vendor/miniz
+	url = https://github.com/richgel999/miniz
