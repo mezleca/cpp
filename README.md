@@ -7,9 +7,7 @@
   todo (image)
 </p>
 
-## wtf is osu-stuff
-
-a simple and useful app that gives you freedom to:
+## what it does
 
 - manage your lazer/stable collections (import, export, merge, etc...)
 - download beatmaps (missing beatmaps from collections, from players, etc...)
@@ -19,19 +17,17 @@ a simple and useful app that gives you freedom to:
 > [!NOTE]
 > beatmaps downloaded with lazer mode on will be placed on your exports folder!
 
-## wanna help osu-stuff development?
-
-- bug reports and merge requests are always welcome :)
-- just make sure to include what you're adding or the issue you're reporting.
-
 ## download
 
-- **latest stable version**: [download here](https://github.com/mezleca/osu-stuff/releases/latest)
+**latest stable version**: [download here](https://github.com/mezleca/osu-stuff/releases/latest)
 
-## dependencies
+## building from source
 
-### linux (debian/ubuntu)
+### linux
 
+**dependencies**
+
+debian/ubuntu:
 ```bash
 sudo apt-get update
 sudo apt-get install -y \
@@ -41,85 +37,90 @@ sudo apt-get install -y \
   libnotify-dev libxtst-dev libdbus-1-dev libfuse2 libsndfile1-dev
 ```
 
-### linux (arch)
-
+arch:
 ```bash
 sudo pacman -S --noconfirm \
   qt6-base qt6-declarative qt6-tools \
   libnotify libxtst dbus fuse libsndfile
 ```
 
-### cross compile to windows (mingw-w64)
+**build**
+```bash
+git clone https://github.com/mezleca/osu-stuff.git && cd osu-stuff
+python ez init
+python ez build
+```
 
-#### debian/ubuntu
+---
 
+### windows (native)
+
+**dependencies**
+```powershell
+choco install -y python ninja msys2
+
+# open msys2 mingw64 shell and run:
+pacman -S --noconfirm mingw-w64-x86_64-toolchain
+
+# install qt6
+pip install aqtinstall
+aqt install-qt windows desktop 6.6.2 win64_mingw -O $env:USERPROFILE\\qt
+```
+
+**build**
+```powershell
+git clone https://github.com/mezleca/osu-stuff.git && cd osu-stuff
+python ez init
+python ez build
+```
+
+---
+
+### cross-compile linux -> windows (mingw-w64)
+
+**dependencies**
+
+debian/ubuntu:
 ```bash
 sudo apt-get install -y \
   mingw-w64 g++-mingw-w64-x86-64 binutils-mingw-w64 \
   zlib1g-dev
 ```
 
-#### arch
-
+arch:
 ```bash
 sudo pacman -S --noconfirm \
-  mingw-w64-gcc mingw-w64-binutils mingw-w64-zlib mingw-w64-openssl
+  mingw-w64-gcc mingw-w64-binutils mingw-w64-zlib
 ```
 
-#### qt6 (mingw)
-
+qt6 for cross-compile:
 ```bash
+# debian/ubuntu
+pip install --user aqtinstall
+
 # arch
 paru -S --noconfirm python-aqtinstall
 
-# debian/ubuntu
-python -m pip install --user aqtinstall
-
-# note: the ~/qt path is used by the "ez" script, if you wanna install somewhere else, make sure to also modify "ez"
+# note: ~/qt is the default path used by the ez script
 aqt install-qt linux desktop 6.6.2 gcc_64 -O ~/qt
 aqt install-qt windows desktop 6.6.2 win64_mingw -O ~/qt
 ```
 
-## build
-
-### prerequisites
-
-- [git](https://git-scm.com/downloads)
-- [python](https://www.python.org/)
-- cmake + ninja
-- linux: clang
-- windows / linux cross compile: mingw-w64
-
-### steps
-
+**build**
 ```bash
-# clone repo
 git clone https://github.com/mezleca/osu-stuff.git && cd osu-stuff
-
-# linux build
 python ez init
-python ez build
-
-# cross compile for windows (linux)
-python -m pip install --user aqtinstall
-~/.local/bin/aqt install-qt windows desktop 6.6.2 win64_mingw -O ~/qt
 python ez configure --platform=windows
 python ez build
 ```
 
-## windows dependencies
+---
 
-```powershell
-choco install -y python ninja aqt
-choco install -y msys2
+## contributing
 
-# open msys2 mingw64 shell and run:
-pacman -S --noconfirm mingw-w64-x86_64-toolchain
-
-aqt install-qt windows desktop 6.6.2 win64_mingw -O $env:USERPROFILE\\qt
-```
+bug reports and merge requests are always welcome. just make sure to include what you're adding or the issue you're reporting.
 
 ## credits
 
-- [CollectionManager](https://github.com/Piotrekol/CollectionManager) .osdb files
+- [CollectionManager](https://github.com/Piotrekol/CollectionManager) — .osdb files
 - [Osu!Collector](https://osucollector.com)
