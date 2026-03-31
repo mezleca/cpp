@@ -110,7 +110,12 @@ python ez build
 ## windows dependencies
 
 ```powershell
-choco install -y python ninja mingw aqt
+choco install -y python ninja aqt
+choco install -y msys2
+
+# open msys2 mingw64 shell and run:
+pacman -S --noconfirm mingw-w64-x86_64-toolchain
+
 aqt install-qt windows desktop 6.6.2 win64_mingw -O $env:USERPROFILE\\qt
 ```
 
