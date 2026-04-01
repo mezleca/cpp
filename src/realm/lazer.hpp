@@ -1,12 +1,9 @@
 #pragma once
 
-#include <cpprealm/sdk.hpp>
-
-#include <chrono>
+#include <realm.hpp>
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <vector>
 
 namespace realm {
     struct BeatmapDifficulty {
@@ -20,6 +17,7 @@ namespace realm {
 
     REALM_EMBEDDED_SCHEMA(BeatmapDifficulty, DrainRate, CircleSize, OverallDifficulty, ApproachRate, SliderMultiplier,
                           SliderTickRate)
+
     struct BeatmapUserSettings {
         double Offset = 0.0;
     };

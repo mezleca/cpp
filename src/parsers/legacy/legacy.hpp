@@ -6,19 +6,19 @@
 #include <vector>
 
 // === shared ===
-struct osu_int_float_pair {
+struct legacy_float_pair {
     int32_t mod_combination = 0;
     double star_rating = 0.0;
 };
 
-struct osu_db_timing_point {
+struct legacy_timing_point {
     double bpm = 0.0;
     double offset = 0.0;
     int32_t inherited = 0;
 };
 
 // === osu!.db ===
-struct osu_db_beatmap {
+struct legacy_beatmap {
     std::optional<int32_t> entry_size;
     std::string artist;
     std::string artist_unicode;
@@ -29,7 +29,7 @@ struct osu_db_beatmap {
     std::string audio_file_name;
     std::string md5;
     std::string osu_file_name;
-    int32_t ranked_status = 0;
+    int32_t status = 0;
     int32_t hitcircle = 0;
     int32_t sliders = 0;
     int32_t spinners = 0;
@@ -39,15 +39,15 @@ struct osu_db_beatmap {
     double hp_drain = 0.0;
     double overall_difficulty = 0.0;
     double slider_velocity = 0.0;
-    std::vector<osu_int_float_pair> star_rating_standard;
-    std::vector<osu_int_float_pair> star_rating_taiko;
-    std::vector<osu_int_float_pair> star_rating_ctb;
-    std::vector<osu_int_float_pair> star_rating_mania;
+    std::vector<legacy_float_pair> star_rating_standard;
+    std::vector<legacy_float_pair> star_rating_taiko;
+    std::vector<legacy_float_pair> star_rating_ctb;
+    std::vector<legacy_float_pair> star_rating_mania;
     int32_t drain_time = 0;
     int32_t total_time = 0;
     std::optional<double> duration;
     int32_t audio_preview_time = 0;
-    std::vector<osu_db_timing_point> timing_points;
+    std::vector<legacy_timing_point> timing_points;
     int32_t difficulty_id = 0;
     int32_t beatmap_id = 0;
     int32_t thread_id = 0;
@@ -84,25 +84,12 @@ struct osu_legacy_database {
     int64_t account_unlock_time = 0;
     std::string player_name;
     int32_t beatmaps_count = 0;
-    std::vector<osu_db_beatmap> beatmaps;
+    std::vector<legacy_beatmap> beatmaps;
     int32_t permissions = 0;
 };
 
-// === collection.db ===
-struct legacy_collection {
-    std::string name;
-    int32_t beatmaps_count = 0;
-    std::vector<std::string> beatmap_md5;
-};
-
-struct osu_legacy_collection {
-    int32_t version = 0;
-    int32_t collections_count = 0;
-    std::vector<legacy_collection> collections;
-};
-
 // === scores.db ===
-struct osu_score_base {
+struct legacy_score_base {
     int32_t mode = 0;
     int32_t version = 0;
     std::string beatmap_md5;
@@ -123,44 +110,32 @@ struct osu_score_base {
     std::optional<double> additional_mod_info;
 };
 
-struct osu_score : osu_score_base {
+struct legacy_score : legacy_score_base {
     int32_t replay_data_length = -1;
     std::vector<uint8_t> replay_data;
     int64_t online_score_id = 0;
 };
 
-struct osu_scores_beatmap {
+struct legacy_scores_beatmap {
     std::string beatmap_md5;
     int32_t scores_count = 0;
-    std::vector<osu_score> scores;
+    std::vector<legacy_score> scores;
 };
 
-struct osu_scores_db {
+struct legacy_scores_db {
     int32_t version = 0;
     int32_t beatmaps_count = 0;
-    std::vector<osu_scores_beatmap> beatmaps;
+    std::vector<legacy_scores_beatmap> beatmaps;
 };
 
 // === replay (.osr) ===
-struct osu_replay : osu_score_base {
+struct legacy_replay : legacy_score_base {
     int32_t replay_data_length = 0;
     std::vector<uint8_t> replay_data;
     int64_t online_score_id = 0;
 };
 
-// === parsers ===
 namespace legacy_parser {
-    bool parse(const std::string& location);
-    bool write();
-
-    inline osu_legacy_database* data = nullptr;
-    inline std::string location("");
-};
-
-namespace legacy_collection_parser {
-    bool parse(const std::string& location);
-    bool write();
-
-    inline osu_legacy_collection* data = nullptr;
-    inline std::string location("");
+    bool parse(const std::string location, osu_legacy_database* data);
+    bool write(const std::string location, osu_legacy_database* data);
 };

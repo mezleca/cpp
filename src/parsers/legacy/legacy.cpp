@@ -1,11 +1,11 @@
 #include "legacy.hpp"
-#include "../../utils/binary.hpp"
+#include "../utils/binary.hpp"
 
 #include <algorithm>
 #include <stdexcept>
 
-static osu_int_float_pair read_int_float_pair(osu_binary::binary_cursor& cursor, bool use_float) {
-    osu_int_float_pair pair;
+static legacy_float_pair read_int_float_pair(osu_binary::binary_cursor& cursor, bool use_float) {
+    legacy_float_pair pair;
 
     uint8_t marker = osu_binary::read_u8(cursor);
 
@@ -32,8 +32,8 @@ static osu_int_float_pair read_int_float_pair(osu_binary::binary_cursor& cursor,
     return pair;
 }
 
-static std::vector<osu_int_float_pair> read_star_ratings(osu_binary::binary_cursor& cursor, bool use_float) {
-    std::vector<osu_int_float_pair> ratings;
+static std::vector<legacy_float_pair> read_star_ratings(osu_binary::binary_cursor& cursor, bool use_float) {
+    std::vector<legacy_float_pair> ratings;
     int32_t count = osu_binary::read_i32(cursor);
 
     if (count < 0) {
@@ -53,7 +53,7 @@ static std::vector<osu_int_float_pair> read_star_ratings(osu_binary::binary_curs
     return ratings;
 }
 
-static void write_int_float_pair(std::vector<uint8_t>& buffer, const osu_int_float_pair& pair, bool use_float) {
+static void write_int_float_pair(std::vector<uint8_t>& buffer, const legacy_float_pair& pair, bool use_float) {
     osu_binary::write_u8(buffer, 0x08);
     osu_binary::write_i32(buffer, pair.mod_combination);
 
@@ -66,7 +66,7 @@ static void write_int_float_pair(std::vector<uint8_t>& buffer, const osu_int_flo
     }
 }
 
-static void write_star_ratings(std::vector<uint8_t>& buffer, const std::vector<osu_int_float_pair>& ratings,
+static void write_star_ratings(std::vector<uint8_t>& buffer, const std::vector<legacy_float_pair>& ratings,
                                bool use_float) {
     osu_binary::write_i32(buffer, static_cast<int32_t>(ratings.size()));
 
@@ -75,8 +75,8 @@ static void write_star_ratings(std::vector<uint8_t>& buffer, const std::vector<o
     }
 }
 
-static osu_db_beatmap read_beatmap(osu_binary::binary_cursor& cursor, int32_t version) {
-    osu_db_beatmap beatmap;
+static legacy_beatmap read_beatmap(osu_binary::binary_cursor& cursor, int32_t version) {
+    legacy_beatmap beatmap;
 
     const bool has_entry_size = version < 20191106;
     const bool old_diff_format = version < 20140609;
@@ -98,7 +98,7 @@ static osu_db_beatmap read_beatmap(osu_binary::binary_cursor& cursor, int32_t ve
     beatmap.audio_file_name = osu_binary::read_string(cursor);
     beatmap.md5 = osu_binary::read_string(cursor);
     beatmap.osu_file_name = osu_binary::read_string(cursor);
-    beatmap.ranked_status = osu_binary::read_u8(cursor);
+    beatmap.status = osu_binary::read_u8(cursor);
     beatmap.hitcircle = osu_binary::read_u16(cursor);
     beatmap.sliders = osu_binary::read_u16(cursor);
     beatmap.spinners = osu_binary::read_u16(cursor);
@@ -138,7 +138,7 @@ static osu_db_beatmap read_beatmap(osu_binary::binary_cursor& cursor, int32_t ve
     beatmap.timing_points.reserve(static_cast<size_t>(std::max(0, timing_count)));
 
     for (int32_t i = 0; i < timing_count; i++) {
-        osu_db_timing_point tp;
+        legacy_timing_point tp;
         tp.bpm = osu_binary::read_f64(cursor);
         tp.offset = osu_binary::read_f64(cursor);
         tp.inherited = osu_binary::read_bool(cursor) ? 1 : 0;
@@ -193,11 +193,7 @@ static osu_db_beatmap read_beatmap(osu_binary::binary_cursor& cursor, int32_t ve
     return beatmap;
 }
 
-bool legacy_parser::parse(const std::string& location) {
-    if (data == nullptr) {
-        return false;
-    }
-
+bool legacy_parser::parse(const std::string location, osu_legacy_database* data) {
     std::vector<uint8_t> buffer;
 
     if (!osu_binary::read_file_buffer(location, buffer)) {
@@ -235,7 +231,7 @@ bool legacy_parser::parse(const std::string& location) {
     }
 }
 
-bool legacy_parser::write() {
+bool legacy_parser::write(const std::string location, osu_legacy_database* data) {
     if (data == nullptr || location.empty()) {
         return false;
     }
@@ -270,7 +266,7 @@ bool legacy_parser::write() {
         osu_binary::write_string(entry, beatmap.audio_file_name);
         osu_binary::write_string(entry, beatmap.md5);
         osu_binary::write_string(entry, beatmap.osu_file_name);
-        osu_binary::write_u8(entry, static_cast<uint8_t>(beatmap.ranked_status));
+        osu_binary::write_u8(entry, static_cast<uint8_t>(beatmap.status));
         osu_binary::write_u16(entry, static_cast<uint16_t>(beatmap.hitcircle));
         osu_binary::write_u16(entry, static_cast<uint16_t>(beatmap.sliders));
         osu_binary::write_u16(entry, static_cast<uint16_t>(beatmap.spinners));

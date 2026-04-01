@@ -1,6 +1,6 @@
 #pragma once
 
-#include "schemas/lazer.hpp"
+#include "./lazer.hpp"
 
 namespace realmdb {
     inline realm::db open_lazer(const std::string& path) {

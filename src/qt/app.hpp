@@ -2,7 +2,6 @@
 
 #include <QObject>
 #include <QStringList>
-#include <iostream>
 #include <qtmetamacros.h>
 
 class AppController : public QObject {
@@ -17,14 +16,17 @@ class AppController : public QObject {
     int get_current_tab() {
         return m_current_tab;
     }
+
     QStringList get_tabs() {
         return m_tabs;
     }
 
     // setters
     Q_INVOKABLE void set_current_tab(int tab) {
-        if (m_current_tab == tab)
+        if (m_current_tab == tab) {
             return;
+        }
+
         m_current_tab = tab;
         emit current_tab_changed();
     }

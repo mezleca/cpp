@@ -1,13 +1,9 @@
-#include "legacy.hpp"
-#include "../../utils/binary.hpp"
+#include "legacy_collection.hpp"
+#include "../utils/binary.hpp"
 
 #include <algorithm>
 
-bool legacy_collection_parser::parse(const std::string& location) {
-    if (data == nullptr) {
-        return false;
-    }
-
+bool legacy_collection_parser::parse(const std::string location, osu_legacy_collection* data) {
     std::vector<uint8_t> buffer;
 
     if (!osu_binary::read_file_buffer(location, buffer)) {
@@ -15,22 +11,20 @@ bool legacy_collection_parser::parse(const std::string& location) {
     }
 
     try {
-        osu_legacy_collection temp;
         osu_binary::binary_cursor cursor;
-
         osu_binary::set_cursor(cursor, buffer);
 
-        temp.version = osu_binary::read_i32(cursor);
-        temp.collections_count = osu_binary::read_i32(cursor);
+        data->version = osu_binary::read_i32(cursor);
+        data->collections_count = osu_binary::read_i32(cursor);
 
-        if (temp.collections_count < 0) {
+        if (data->collections_count < 0) {
             throw std::runtime_error("invalid collections count");
         }
 
-        temp.collections.clear();
-        temp.collections.reserve(static_cast<size_t>(std::max(0, temp.collections_count)));
+        data->collections.clear();
+        data->collections.reserve(static_cast<size_t>(std::max(0, data->collections_count)));
 
-        for (int32_t i = 0; i < temp.collections_count; i++) {
+        for (int32_t i = 0; i < data->collections_count; i++) {
             legacy_collection collection;
 
             collection.name = osu_binary::read_string(cursor);
@@ -47,17 +41,16 @@ bool legacy_collection_parser::parse(const std::string& location) {
                 collection.beatmap_md5.push_back(osu_binary::read_string(cursor));
             }
 
-            temp.collections.push_back(std::move(collection));
+            data->collections.push_back(std::move(collection));
         }
 
-        *data = std::move(temp);
         return true;
     } catch (const std::exception& e) {
         return false;
     }
 }
 
-bool legacy_collection_parser::write() {
+bool legacy_collection_parser::write(const std::string location, osu_legacy_collection* data) {
     if (data == nullptr || location.empty()) {
         return false;
     }
