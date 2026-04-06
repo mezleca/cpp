@@ -7,21 +7,33 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QUrl>
-#include <iostream>
 #include <qqml.h>
 
 #define APP_URI "osu_stuff"
 
 int main(int argc, char** argv) {
-    stableClient client{"/mnt/osu/"};
+    std::clock_t p_start = std::clock();
+    StableClient client{"/mnt/osu/"};
 
+    fmt::println("took {} to initialize", (std::clock() - p_start) / (double)CLOCKS_PER_SEC);
     fmt::println("player name: {}", client.get_player_name());
 
     auto c = client.get_collection("good shit");
     auto c1 = client.get_collection("good shit");
+    auto b1 = client.get_beatmapset(2066317);
+    auto b2 = client.get_beatmap_by_id(4322862);
 
     fmt::println("c1 cached: name: {} | count: {}", c->name, c->checksums.size());
     fmt::println("c1 cached: name: {} | count: {}", c1->name, c1->checksums.size());
+
+    if (b1) {
+        fmt::println("beatmapset: {} - {} by {} ({} diffs)", b1->artist, b1->title, b1->creator, b1->beatmaps.size());
+        fmt::println("1st diff of {}: {}", b1->title, b1->beatmaps[0]->difficulty);
+    }
+
+    if (b2) {
+        fmt::println("same diff but directly {}: {} (id: {})", b2->title, b2->difficulty, b2->difficulty_id);
+    }
 
     if (client.delete_collection("good shit")) {
         fmt::println("removed collection");

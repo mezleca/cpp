@@ -1,11 +1,10 @@
 #pragma once
 
-#include "../parsers/legacy/legacy.hpp"
-#include "../parsers/legacy/legacy_collection.hpp"
 #include <memory>
+#include <optional>
+#include <string_view>
 #include <unordered_map>
-
-// TODO: move this somewhere else
+#include <vector>
 
 enum class BeatmapStatus : int32_t {
     UKNOWN = 0,
@@ -56,15 +55,34 @@ struct osu_beatmap {
     Gamemode mode = Gamemode::OSU;
 };
 
+struct osu_beatmapset {
+    std::string artist;
+    std::string artist_unicode;
+    std::string title;
+    std::string title_unicode;
+    std::string creator;
+    int beatmapset_id;
+    std::vector<osu_beatmap*> beatmaps;
+};
+
 class Client {
   public:
     virtual ~Client() = default;
 
+    // methods
     virtual std::string get_player_name() = 0;
     virtual osu_collection* get_collection(std::string_view name) = 0;
+    virtual bool add_collection(osu_collection* collection) = 0;
     virtual bool delete_collection(std::string_view name) = 0;
+    virtual bool update_collection() = 0;
+    virtual osu_beatmap* get_beatmap(std::string md5) = 0;
+    virtual osu_beatmap* get_beatmap_by_id(int id) = 0;
+    virtual osu_beatmapset* get_beatmapset(int id) = 0;
 
   protected:
     std::unordered_map<std::string_view, std::unique_ptr<osu_collection>> m_collections;
-    std::unordered_map<std::string_view, std::unique_ptr<osu_beatmap>> m_beatmaps;
+    std::unordered_map<std::string, std::unique_ptr<osu_beatmap>> m_beatmaps;
+    std::unordered_map<int, std::unique_ptr<osu_beatmapset>> m_beatmapsets;
+
+    bool m_collection_dirty = false;
 };
