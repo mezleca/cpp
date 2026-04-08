@@ -90,7 +90,8 @@ namespace query {
         return {QueryOp::INVALID, 0};
     }
 
-    template <typename F, typename S> inline std::pair<std::string, bool> parse(std::string_view data, F d, S s) {
+    template <typename F, typename S>
+    inline std::pair<std::string, bool> parse(std::string_view data, F d, S s) {
         QueryState m_state = {};
         std::string content;
 

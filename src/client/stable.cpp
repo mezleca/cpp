@@ -108,8 +108,7 @@ bool StableClient::delete_collection(std::string_view name) {
 }
 
 bool StableClient::update_collection() {
-    if (!m_collection_dirty)
-        return true;
+    if (!m_collection_dirty) return true;
 
     for (auto& collection : m_stable_collection.collections) {
         auto& modified = m_collections.at(collection.name);
@@ -123,24 +122,21 @@ bool StableClient::update_collection() {
 }
 
 OsuBeatmap* StableClient::get_beatmap(std::string md5) {
-    if (m_beatmaps.find(md5) == m_beatmaps.end())
-        return nullptr;
+    if (m_beatmaps.find(md5) == m_beatmaps.end()) return nullptr;
     auto& beatmap = m_beatmaps.at(md5);
     return beatmap.get();
 }
 
 OsuBeatmap* StableClient::get_beatmap_by_id(int id) {
     for (const auto& [_, beatmap] : m_beatmaps) {
-        if (beatmap->difficulty_id == id)
-            return beatmap.get();
+        if (beatmap->difficulty_id == id) return beatmap.get();
     }
 
     return nullptr;
 }
 
 OsuBeatmapSet* StableClient::get_beatmapset(int id) {
-    if (m_beatmapsets.find(id) == m_beatmapsets.end())
-        return nullptr;
+    if (m_beatmapsets.find(id) == m_beatmapsets.end()) return nullptr;
     auto& beatmapset = m_beatmapsets.at(id);
     return beatmapset.get();
 }

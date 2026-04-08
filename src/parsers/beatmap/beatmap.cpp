@@ -276,10 +276,8 @@ void parse_events(const std::vector<std::string_view>& lines, std::optional<Even
             if (get_image_extensions().count(ext)) {
                 EventBackground b;
                 b.filename = normalize_path(filename);
-                if (parts.size() >= 4)
-                    b.x_offset = binary::convert_to<int>(parts[3], 0);
-                if (parts.size() >= 5)
-                    b.y_offset = binary::convert_to<int>(parts[4], 0);
+                if (parts.size() >= 4) b.x_offset = binary::convert_to<int>(parts[3], 0);
+                if (parts.size() >= 5) b.y_offset = binary::convert_to<int>(parts[4], 0);
                 bg = b;
             }
         } else if ((type == "1" || type == "Video") && parts.size() >= 3) {
@@ -290,10 +288,8 @@ void parse_events(const std::vector<std::string_view>& lines, std::optional<Even
                 EventVideo v;
                 v.start_time = binary::convert_to<int>(parts[1], 0);
                 v.filename = normalize_path(filename);
-                if (parts.size() >= 4)
-                    v.x_offset = binary::convert_to<int>(parts[3], 0);
-                if (parts.size() >= 5)
-                    v.y_offset = binary::convert_to<int>(parts[4], 0);
+                if (parts.size() >= 4) v.x_offset = binary::convert_to<int>(parts[3], 0);
+                if (parts.size() >= 5) v.y_offset = binary::convert_to<int>(parts[4], 0);
                 vid = v;
             }
         } else if ((type == "2" || type == "Break") && parts.size() >= 3) {
@@ -318,18 +314,12 @@ static std::vector<TimingPoint> parse_timing_points(const std::vector<std::strin
         TimingPoint tp;
         tp.time = binary::convert_to<int>(parts[0], 0);
         tp.beat_length = binary::convert_to<double>(parts[1], 0.0);
-        if (parts.size() > 2)
-            tp.meter = binary::convert_to<int>(parts[2], 4);
-        if (parts.size() > 3)
-            tp.sample_set = binary::convert_to<int>(parts[3], 0);
-        if (parts.size() > 4)
-            tp.sample_index = binary::convert_to<int>(parts[4], 0);
-        if (parts.size() > 5)
-            tp.volume = binary::convert_to<int>(parts[5], 100);
-        if (parts.size() > 6)
-            tp.uninherited = binary::convert_to<int>(parts[6], 1);
-        if (parts.size() > 7)
-            tp.effects = binary::convert_to<int>(parts[7], 0);
+        if (parts.size() > 2) tp.meter = binary::convert_to<int>(parts[2], 4);
+        if (parts.size() > 3) tp.sample_set = binary::convert_to<int>(parts[3], 0);
+        if (parts.size() > 4) tp.sample_index = binary::convert_to<int>(parts[4], 0);
+        if (parts.size() > 5) tp.volume = binary::convert_to<int>(parts[5], 100);
+        if (parts.size() > 6) tp.uninherited = binary::convert_to<int>(parts[6], 1);
+        if (parts.size() > 7) tp.effects = binary::convert_to<int>(parts[7], 0);
 
         points.push_back(tp);
     }
@@ -367,16 +357,11 @@ static HitSample parse_hit_sample(std::string_view str) {
     HitSample hs;
     auto parts = split_view(str, ':');
 
-    if (!parts.empty())
-        hs.normal_set = binary::convert_to<int>(parts[0], 0);
-    if (parts.size() > 1)
-        hs.addition_set = binary::convert_to<int>(parts[1], 0);
-    if (parts.size() > 2)
-        hs.index = binary::convert_to<int>(parts[2], 0);
-    if (parts.size() > 3)
-        hs.volume = binary::convert_to<int>(parts[3], 0);
-    if (parts.size() > 4)
-        hs.filename = std::string(trim_view(parts[4]));
+    if (!parts.empty()) hs.normal_set = binary::convert_to<int>(parts[0], 0);
+    if (parts.size() > 1) hs.addition_set = binary::convert_to<int>(parts[1], 0);
+    if (parts.size() > 2) hs.index = binary::convert_to<int>(parts[2], 0);
+    if (parts.size() > 3) hs.volume = binary::convert_to<int>(parts[3], 0);
+    if (parts.size() > 4) hs.filename = std::string(trim_view(parts[4]));
 
     return hs;
 }
@@ -469,8 +454,7 @@ static std::vector<HitObject> parse_hit_objects(const std::vector<std::string_vi
             if (hold_parts.size() > 1) {
                 std::string sample_str;
                 for (size_t i = 1; i < hold_parts.size(); i++) {
-                    if (i > 1)
-                        sample_str += ":";
+                    if (i > 1) sample_str += ":";
                     sample_str += std::string(hold_parts[i]);
                 }
                 ho.sample = parse_hit_sample(sample_str);

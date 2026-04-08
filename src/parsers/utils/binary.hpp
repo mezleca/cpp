@@ -47,7 +47,8 @@ namespace binary {
 #endif
     }
 
-    template <typename T> inline T byteswap(T value) {
+    template <typename T>
+    inline T byteswap(T value) {
         using U = std::make_unsigned_t<T>;
         U uvalue = static_cast<U>(value);
         if constexpr (sizeof(U) == 1) {
@@ -67,7 +68,8 @@ namespace binary {
         return static_cast<T>(uvalue);
     }
 
-    template <typename T> inline T read_integral(BinaryCursor& cursor) {
+    template <typename T>
+    inline T read_integral(BinaryCursor& cursor) {
         using U = std::make_unsigned_t<T>;
         U value = 0;
         ensure_range(cursor, sizeof(T));
@@ -185,7 +187,8 @@ namespace binary {
         cursor.offset += bytes;
     }
 
-    template <typename T> inline void append_integral(std::vector<uint8_t>& out, T value) {
+    template <typename T>
+    inline void append_integral(std::vector<uint8_t>& out, T value) {
         static_assert(std::is_integral_v<T>, "append_integral expects integral types");
         if (!is_little_endian()) {
             value = byteswap(value);
@@ -304,7 +307,8 @@ namespace binary {
         return file.good();
     }
 
-    template <typename T> T str_to(std::string_view sv, T _d = T()) {
+    template <typename T>
+    T str_to(std::string_view sv, T _d = T()) {
         T value = {};
         auto result = std::from_chars(sv.data(), sv.data() + sv.size(), value);
 
@@ -316,7 +320,8 @@ namespace binary {
         return value;
     }
 
-    template <typename T> inline static T convert_to(std::string_view value, T _d = T()) {
+    template <typename T>
+    inline static T convert_to(std::string_view value, T _d = T()) {
         if constexpr (std::is_same_v<T, int>) {
             return str_to<int>(value);
         } else if constexpr (std::is_same_v<T, float>) {

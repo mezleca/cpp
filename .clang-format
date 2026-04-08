@@ -1,7 +1,7 @@
 BasedOnStyle: LLVM
 IndentWidth: 4
 ColumnLimit: 120
-AllowShortIfStatementsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: WithoutElse
 AllowShortLoopsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: None
 DerivePointerAlignment: false
@@ -10,3 +10,4 @@ PointerAlignment: Left
 SortIncludes: false
 NamespaceIndentation: All
 FixNamespaceComments: false
+AlwaysBreakTemplateDeclarations: Yes
