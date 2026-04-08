@@ -28,7 +28,8 @@ int main(int argc, char** argv) {
 
     if (b1) {
         fmt::println("beatmapset: {} - {} by {} ({} diffs)", b1->artist, b1->title, b1->creator, b1->beatmaps.size());
-        fmt::println("1st diff of {}: {} {}", b1->title, b1->beatmaps[0]->difficulty, b1->beatmaps[0]->overall_difficulty);
+        fmt::println("1st diff of {}: {} {}", b1->title, b1->beatmaps[0]->difficulty,
+                     b1->beatmaps[0]->overall_difficulty);
     }
 
     if (b2) {

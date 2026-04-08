@@ -304,33 +304,31 @@ namespace binary {
         return file.good();
     }
 
-	template <typename T>
-	T str_to(std::string_view sv, T _d = T()) {
-		T value = {};
-		auto result = std::from_chars(sv.data(), sv.data() + sv.size(), value);
+    template <typename T> T str_to(std::string_view sv, T _d = T()) {
+        T value = {};
+        auto result = std::from_chars(sv.data(), sv.data() + sv.size(), value);
 
-		if (result.ec == std::errc::invalid_argument || result.ptr != sv.data() + sv.size()) {
-			fmt::println("str_to<{}>(): failed to convert {}", typeid(T).name(), sv);
-			return _d;
-		}
+        if (result.ec == std::errc::invalid_argument || result.ptr != sv.data() + sv.size()) {
+            fmt::println("str_to<{}>(): failed to convert {}", typeid(T).name(), sv);
+            return _d;
+        }
 
-		return value;
-	}
+        return value;
+    }
 
-    template <typename T>
-    inline static T convert_to(std::string_view value, T _d = T()) {
-		if constexpr (std::is_same_v<T, int>) {
-			return str_to<int>(value);
-		} else if constexpr (std::is_same_v<T, float>) {
-			return str_to<float>(value);
-		} else if constexpr (std::is_same_v<T, double>) {
-			return str_to<double>(value);
-		} else if constexpr (std::is_same_v<T, const char*>) {
-			return value;
-		} else if constexpr (std::is_same_v<T, std::string>) {
-		    return std::string(value);
-		} else {
-			return _d;
-		}
-	}
+    template <typename T> inline static T convert_to(std::string_view value, T _d = T()) {
+        if constexpr (std::is_same_v<T, int>) {
+            return str_to<int>(value);
+        } else if constexpr (std::is_same_v<T, float>) {
+            return str_to<float>(value);
+        } else if constexpr (std::is_same_v<T, double>) {
+            return str_to<double>(value);
+        } else if constexpr (std::is_same_v<T, const char*>) {
+            return value;
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            return std::string(value);
+        } else {
+            return _d;
+        }
+    }
 }

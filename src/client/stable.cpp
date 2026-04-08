@@ -18,8 +18,8 @@ std::unique_ptr<OsuBeatmap> make_beatmap(const LegacyBeatmap& beatmap) {
 
 std::unique_ptr<OsuBeatmapSet> make_beatmapset(const OsuBeatmap& beatmap) {
     std::vector<OsuBeatmap*> beatmaps;
-    return std::make_unique<OsuBeatmapSet>(beatmap.artist, beatmap.artist_unicode, beatmap.title,
-                                            beatmap.title_unicode, beatmap.creator, beatmap.beatmap_id, beatmaps);
+    return std::make_unique<OsuBeatmapSet>(beatmap.artist, beatmap.artist_unicode, beatmap.title, beatmap.title_unicode,
+                                           beatmap.creator, beatmap.beatmap_id, beatmaps);
 }
 
 StableClient::StableClient(std::filesystem::path base) : m_location(base) {

@@ -28,56 +28,38 @@ struct OsuCollection {
 };
 
 // queryable fields with variations
-#define QUERY_FIELDS_V \
-	X(double, approach_rate, "ar") \
-	X(double, circle_size, "cs") \
-    X(double, overall_difficulty, "od") \
+#define QUERY_FIELDS_V                                                                                                 \
+    X(double, approach_rate, "ar")                                                                                     \
+    X(double, circle_size, "cs")                                                                                       \
+    X(double, overall_difficulty, "od")                                                                                \
     X(double, hp_drain, "hp")
 
 // queryable fields with no variations
-#define QUERY_FIELDS_NV \
-	X(std::string, artist) \
-    X(std::string, title) \
-    X(std::string, creator) \
-    X(std::string, difficulty) \
-    X(Gamemode, mode) \
-    X(BeatmapStatus, status) \
+#define QUERY_FIELDS_NV                                                                                                \
+    X(std::string, artist)                                                                                             \
+    X(std::string, title)                                                                                              \
+    X(std::string, creator)                                                                                            \
+    X(std::string, difficulty)                                                                                         \
+    X(Gamemode, mode)                                                                                                  \
+    X(BeatmapStatus, status)
 
 // TODO: fields that requires custom dispatches like: played, key / keys, etc...
 
-#define QUERY_FIELDS \
-    QUERY_FIELDS_NV \
+#define QUERY_FIELDS                                                                                                   \
+    QUERY_FIELDS_NV                                                                                                    \
     QUERY_FIELDS_V
 
 struct OsuBeatmap {
     explicit OsuBeatmap(const LegacyBeatmap& b)
-        : artist(b.artist),
-          artist_unicode(b.artist_unicode),
-          title(b.title),
-          title_unicode(b.title_unicode),
-          creator(b.creator),
-          difficulty(b.difficulty),
-          audio_file_name(b.audio_file_name),
-          md5(b.md5),
-          osu_file_name(b.osu_file_name),
-          status((BeatmapStatus)b.status),
-          hitcircle(b.hitcircle),
-          sliders(b.sliders),
-          spinners(b.spinners),
-          last_modification_time(b.last_modification_time),
-          approach_rate(b.approach_rate),
-          circle_size(b.circle_size),
-          hp_drain(b.hp_drain),
-          overall_difficulty(b.overall_difficulty),
-          slider_velocity(b.slider_velocity),
-          drain_time(b.drain_time),
-          total_time(b.total_time),
-          duration(b.duration),
-          audio_preview_time(b.audio_preview_time),
-          difficulty_id(b.difficulty_id),
-          beatmap_id(b.beatmap_id),
-          mode((Gamemode)b.mode)
-    {}
+        : artist(b.artist), artist_unicode(b.artist_unicode), title(b.title), title_unicode(b.title_unicode),
+          creator(b.creator), difficulty(b.difficulty), audio_file_name(b.audio_file_name), md5(b.md5),
+          osu_file_name(b.osu_file_name), status((BeatmapStatus)b.status), hitcircle(b.hitcircle), sliders(b.sliders),
+          spinners(b.spinners), last_modification_time(b.last_modification_time), approach_rate(b.approach_rate),
+          circle_size(b.circle_size), hp_drain(b.hp_drain), overall_difficulty(b.overall_difficulty),
+          slider_velocity(b.slider_velocity), drain_time(b.drain_time), total_time(b.total_time), duration(b.duration),
+          audio_preview_time(b.audio_preview_time), difficulty_id(b.difficulty_id), beatmap_id(b.beatmap_id),
+          mode((Gamemode)b.mode) {
+    }
 
     std::string artist_unicode;
     std::string title_unicode;
@@ -111,8 +93,8 @@ struct OsuBeatmapSet {
 };
 
 struct OsuSearchData {
-	std::string query;
-	std::string sort; // TODO
+    std::string query;
+    std::string sort; // TODO
 };
 
 class Client {

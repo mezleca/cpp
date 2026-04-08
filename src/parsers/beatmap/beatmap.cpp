@@ -348,7 +348,8 @@ static ColourSection parse_colours(const std::vector<std::string_view>& lines) {
             continue;
         }
 
-        std::array<int, 3> color = {binary::convert_to<int>(parts[0], 0), binary::convert_to<int>(parts[1], 0), binary::convert_to<int>(parts[2], 0)};
+        std::array<int, 3> color = {binary::convert_to<int>(parts[0], 0), binary::convert_to<int>(parts[1], 0),
+                                    binary::convert_to<int>(parts[2], 0)};
 
         if (key.find("Combo") != std::string_view::npos) {
             s.combos.push_back(color);
@@ -418,7 +419,8 @@ static std::vector<HitObject> parse_hit_objects(const std::vector<std::string_vi
                 for (size_t i = 1; i < curve_parts.size(); i++) {
                     auto point = split_view(curve_parts[i], ':');
                     if (point.size() >= 2) {
-                        ho.curve_points.push_back({binary::convert_to<int>(point[0], 0), binary::convert_to<int>(point[1], 0)});
+                        ho.curve_points.push_back(
+                            {binary::convert_to<int>(point[0], 0), binary::convert_to<int>(point[1], 0)});
                     }
                 }
             }
@@ -439,7 +441,8 @@ static std::vector<HitObject> parse_hit_objects(const std::vector<std::string_vi
                 for (const auto& ep : split_view(parts[9], '|')) {
                     auto set = split_view(ep, ':');
                     if (set.size() >= 2) {
-                        ho.edge_sets.push_back({binary::convert_to<int>(set[0], 0), binary::convert_to<int>(set[1], 0)});
+                        ho.edge_sets.push_back(
+                            {binary::convert_to<int>(set[0], 0), binary::convert_to<int>(set[1], 0)});
                     }
                 }
             } else {

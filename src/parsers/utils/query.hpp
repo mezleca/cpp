@@ -3,20 +3,9 @@
 #include <bitset>
 #include <string_view>
 
-enum class QueryOp : int {
-	INVALID = -1,
-    EQ,
-    NEQ,
-    GT,
-    LT,
-    GTE,
-    LTE
-};
+enum class QueryOp : int { INVALID = -1, EQ, NEQ, GT, LT, GTE, LTE };
 
-enum class ParseState : int {
-	KEY,
-	VALUE
-};
+enum class ParseState : int { KEY, VALUE };
 
 static constexpr std::bitset<256> make_op_start_table() {
     std::bitset<256> table{};
@@ -32,9 +21,9 @@ static constexpr std::bitset<256> make_op_start_table() {
 static auto OP_START_TABLE = make_op_start_table();
 
 struct QueryToken {
-	std::string_view key;
-	std::string_view value;
-	QueryOp op;
+    std::string_view key;
+    std::string_view value;
+    QueryOp op;
 };
 
 struct QueryState {
@@ -52,10 +41,10 @@ struct QueryState {
     void reset() {
         value = ParseState::KEY;
 
-		key_start = 0;
-		op_start = 0;
-		op_end = 0;
-		value_end = 0;
+        key_start = 0;
+        op_start = 0;
+        op_end = 0;
+        value_end = 0;
     }
 };
 
@@ -67,42 +56,41 @@ namespace query {
         switch (c1) {
             case '>': {
                 if (c2 == '=') {
-                    return { QueryOp::GTE, 2 };
+                    return {QueryOp::GTE, 2};
                 }
 
-                return { QueryOp::GT, 1 };
+                return {QueryOp::GT, 1};
             }
 
             case '<': {
                 if (c2 == '=') {
-                    return { QueryOp::LTE, 2 };
+                    return {QueryOp::LTE, 2};
                 }
 
-                return { QueryOp::LT, 1 };
+                return {QueryOp::LT, 1};
             }
 
             case '=': {
                 if (c2 == '=') { // variation
-                    return { QueryOp::EQ, 2 };
+                    return {QueryOp::EQ, 2};
                 }
 
-                return { QueryOp::EQ, 1 };
+                return {QueryOp::EQ, 1};
             }
 
             case '!': {
                 if (c2 == '=') {
-                    return { QueryOp::NEQ, 2 };
+                    return {QueryOp::NEQ, 2};
                 }
 
-                return { QueryOp::INVALID, 1 };
+                return {QueryOp::INVALID, 1};
             }
         }
 
-        return { QueryOp::INVALID, 0 };
+        return {QueryOp::INVALID, 0};
     }
 
-    template <typename F, typename S>
-    inline std::pair<std::string, bool> parse(std::string_view data, F d, S s) {
+    template <typename F, typename S> inline std::pair<std::string, bool> parse(std::string_view data, F d, S s) {
         QueryState m_state = {};
         std::string content;
 
@@ -168,7 +156,8 @@ namespace query {
 
                     m_state.value_end = i;
                 } break;
-                default: break;
+                default:
+                    break;
             }
         }
     }
