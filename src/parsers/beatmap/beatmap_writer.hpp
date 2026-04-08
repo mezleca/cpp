@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-struct beatmap_writer {
+struct BeatmapWriter {
     void section(const std::string& name) {
         out << "[" << name << "]\n";
     }

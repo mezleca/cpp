@@ -34,15 +34,15 @@ bool osdb_parser::parse(std::string location) {
     std::string target_location = std::move(location);
     std::vector<uint8_t> buffer;
 
-    if (!osu_binary::read_file_buffer(target_location, buffer)) {
+    if (!binary::read_file_buffer(target_location, buffer)) {
         return false;
     }
 
     try {
-        osu_binary::binary_cursor cursor;
-        osu_binary::set_cursor(cursor, buffer);
+        binary::BinaryCursor cursor;
+        binary::set_cursor(cursor, buffer);
 
-        const std::string version_string = osu_binary::read_string2(cursor);
+        const std::string version_string = binary::read_string2(cursor);
         const int version = osdb_version_to_code(version_string);
 
         if (version == 0) {
@@ -50,7 +50,7 @@ bool osdb_parser::parse(std::string location) {
         }
 
         const bool is_minimal = ends_with(version_string, "min");
-        osdb_data temp;
+        OsdbData temp;
 
         temp.version_string = version_string;
         std::vector<uint8_t> decompressed;
@@ -58,17 +58,17 @@ bool osdb_parser::parse(std::string location) {
         if (version >= 7) {
             std::vector<uint8_t> compressed(buffer.begin() + static_cast<std::ptrdiff_t>(cursor.offset), buffer.end());
 
-            if (!osu_binary::gzip_decompress(compressed, decompressed)) {
+            if (!binary::gzip_decompress(compressed, decompressed)) {
                 return false;
             }
 
-            osu_binary::set_cursor(cursor, decompressed);
-            osu_binary::read_string2(cursor);
+            binary::set_cursor(cursor, decompressed);
+            binary::read_string2(cursor);
         }
 
-        temp.save_data = osu_binary::read_i64(cursor);
-        temp.last_editor = osu_binary::read_string2(cursor);
-        temp.count = osu_binary::read_i32(cursor);
+        temp.save_data = binary::read_i64(cursor);
+        temp.last_editor = binary::read_string2(cursor);
+        temp.count = binary::read_i32(cursor);
 
         if (temp.count < 0) {
             return false;
@@ -77,17 +77,17 @@ bool osdb_parser::parse(std::string location) {
         temp.collections.clear();
         temp.collections.reserve(static_cast<size_t>(temp.count));
 
-        for (int32_t i = 0; i < temp.count; i++) {
-            osdb_collection collection;
-            collection.name = osu_binary::read_string2(cursor);
+        for (int i = 0; i < temp.count; i++) {
+            OsdbCollection collection;
+            collection.name = binary::read_string2(cursor);
 
             if (version >= 7) {
-                collection.online_id = osu_binary::read_i32(cursor);
+                collection.online_id = binary::read_i32(cursor);
             } else {
                 collection.online_id = 0;
             }
 
-            const int32_t beatmaps_count = osu_binary::read_i32(cursor);
+            const int beatmaps_count = binary::read_i32(cursor);
 
             if (beatmaps_count < 0) {
                 return false;
@@ -96,37 +96,37 @@ bool osdb_parser::parse(std::string location) {
             collection.beatmaps.clear();
             collection.beatmaps.reserve(static_cast<size_t>(beatmaps_count));
 
-            for (int32_t j = 0; j < beatmaps_count; j++) {
-                osdb_beatmap beatmap;
+            for (int j = 0; j < beatmaps_count; j++) {
+                OsdbBeatmap beatmap;
 
-                beatmap.difficulty_id = osu_binary::read_i32(cursor);
-                beatmap.beatmapset_id = version >= 2 ? osu_binary::read_i32(cursor) : -1;
+                beatmap.difficulty_id = binary::read_i32(cursor);
+                beatmap.beatmapset_id = version >= 2 ? binary::read_i32(cursor) : -1;
 
                 if (!is_minimal) {
-                    beatmap.artist = osu_binary::read_string2(cursor);
-                    beatmap.title = osu_binary::read_string2(cursor);
-                    beatmap.difficulty = osu_binary::read_string2(cursor);
+                    beatmap.artist = binary::read_string2(cursor);
+                    beatmap.title = binary::read_string2(cursor);
+                    beatmap.difficulty = binary::read_string2(cursor);
                 }
 
-                beatmap.checksum = osu_binary::read_string2(cursor);
+                beatmap.checksum = binary::read_string2(cursor);
 
                 if (version >= 4) {
-                    beatmap.user_comment = osu_binary::read_string2(cursor);
+                    beatmap.user_comment = binary::read_string2(cursor);
                 }
 
                 if (version >= 8 || (version >= 5 && !is_minimal)) {
-                    beatmap.mode = osu_binary::read_u8(cursor);
+                    beatmap.mode = binary::read_u8(cursor);
                 }
 
                 if (version >= 8 || (version >= 6 && !is_minimal)) {
-                    beatmap.difficulty_rating = osu_binary::read_f64(cursor);
+                    beatmap.difficulty_rating = binary::read_f64(cursor);
                 }
 
                 collection.beatmaps.push_back(std::move(beatmap));
             }
 
             if (version >= 3) {
-                const int32_t hash_count = osu_binary::read_i32(cursor);
+                const int hash_count = binary::read_i32(cursor);
                 collection.hash_only_beatmaps.clear();
 
                 if (hash_count < 0) {
@@ -135,15 +135,15 @@ bool osdb_parser::parse(std::string location) {
 
                 collection.hash_only_beatmaps.reserve(static_cast<size_t>(hash_count));
 
-                for (int32_t j = 0; j < hash_count; j++) {
-                    collection.hash_only_beatmaps.push_back(osu_binary::read_string2(cursor));
+                for (int j = 0; j < hash_count; j++) {
+                    collection.hash_only_beatmaps.push_back(binary::read_string2(cursor));
                 }
             }
 
             temp.collections.push_back(std::move(collection));
         }
 
-        const std::string footer = osu_binary::read_string2(cursor);
+        const std::string footer = binary::read_string2(cursor);
 
         if (footer != "By Piotrekol") {
             return false;
@@ -172,7 +172,7 @@ bool osdb_parser::write() {
 
     std::vector<uint8_t> content;
     if (version >= 7) {
-        osu_binary::write_string2(content, version_string);
+        binary::write_string2(content, version_string);
     }
 
     const int64_t save_time = data->save_data != 0
@@ -181,66 +181,66 @@ bool osdb_parser::write() {
                                                              std::chrono::system_clock::now().time_since_epoch())
                                                              .count());
 
-    data->count = static_cast<int32_t>(data->collections.size());
+    data->count = static_cast<int>(data->collections.size());
 
-    osu_binary::write_i64(content, save_time);
-    osu_binary::write_string2(content, data->last_editor);
-    osu_binary::write_i32(content, data->count);
+    binary::write_i64(content, save_time);
+    binary::write_string2(content, data->last_editor);
+    binary::write_i32(content, data->count);
 
     for (const auto& collection : data->collections) {
-        osu_binary::write_string2(content, collection.name);
+        binary::write_string2(content, collection.name);
 
         if (version >= 7) {
-            osu_binary::write_i32(content, collection.online_id);
+            binary::write_i32(content, collection.online_id);
         }
 
-        osu_binary::write_i32(content, static_cast<int32_t>(collection.beatmaps.size()));
+        binary::write_i32(content, static_cast<int>(collection.beatmaps.size()));
 
         for (const auto& beatmap : collection.beatmaps) {
-            osu_binary::write_i32(content, beatmap.difficulty_id);
+            binary::write_i32(content, beatmap.difficulty_id);
 
             if (version >= 2) {
-                osu_binary::write_i32(content, beatmap.beatmapset_id);
+                binary::write_i32(content, beatmap.beatmapset_id);
             }
 
             if (!is_minimal) {
-                osu_binary::write_string2(content, beatmap.artist);
-                osu_binary::write_string2(content, beatmap.title);
-                osu_binary::write_string2(content, beatmap.difficulty);
+                binary::write_string2(content, beatmap.artist);
+                binary::write_string2(content, beatmap.title);
+                binary::write_string2(content, beatmap.difficulty);
             }
 
-            osu_binary::write_string2(content, beatmap.checksum);
+            binary::write_string2(content, beatmap.checksum);
 
             if (version >= 4) {
-                osu_binary::write_string2(content, beatmap.user_comment);
+                binary::write_string2(content, beatmap.user_comment);
             }
 
             if (version >= 8 || (version >= 5 && !is_minimal)) {
-                osu_binary::write_u8(content, static_cast<uint8_t>(beatmap.mode));
+                binary::write_u8(content, static_cast<uint8_t>(beatmap.mode));
             }
 
             if (version >= 8 || (version >= 6 && !is_minimal)) {
-                osu_binary::write_f64(content, beatmap.difficulty_rating);
+                binary::write_f64(content, beatmap.difficulty_rating);
             }
         }
 
         if (version >= 3) {
-            osu_binary::write_i32(content, static_cast<int32_t>(collection.hash_only_beatmaps.size()));
+            binary::write_i32(content, static_cast<int>(collection.hash_only_beatmaps.size()));
             for (const auto& hash : collection.hash_only_beatmaps) {
-                osu_binary::write_string2(content, hash);
+                binary::write_string2(content, hash);
             }
         }
     }
 
-    osu_binary::write_string2(content, "By Piotrekol");
+    binary::write_string2(content, "By Piotrekol");
 
     std::vector<uint8_t> buffer;
-    osu_binary::write_string2(buffer, version_string);
+    binary::write_string2(buffer, version_string);
 
     if (version >= 7) {
         std::vector<uint8_t> compressed;
 
-        if (!osu_binary::gzip_compress(content, compressed)) {
+        if (!binary::gzip_compress(content, compressed)) {
             return false;
         }
 
@@ -249,7 +249,7 @@ bool osdb_parser::write() {
         buffer.insert(buffer.end(), content.begin(), content.end());
     }
 
-    if (!osu_binary::write_file_buffer(location, buffer)) {
+    if (!binary::write_file_buffer(location, buffer)) {
         return false;
     }
 

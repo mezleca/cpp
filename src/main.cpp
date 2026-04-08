@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
 
     if (b1) {
         fmt::println("beatmapset: {} - {} by {} ({} diffs)", b1->artist, b1->title, b1->creator, b1->beatmaps.size());
-        fmt::println("1st diff of {}: {}", b1->title, b1->beatmaps[0]->difficulty);
+        fmt::println("1st diff of {}: {} {}", b1->title, b1->beatmaps[0]->difficulty, b1->beatmaps[0]->overall_difficulty);
     }
 
     if (b2) {
@@ -43,25 +43,23 @@ int main(int argc, char** argv) {
         fmt::println("removed collection 2");
     }
 
-    return 0;
+    QGuiApplication app(argc, argv);
+    QQmlApplicationEngine engine;
 
-    // QGuiApplication app(argc, argv);
-    // QQmlApplicationEngine engine;
+    AppController app_controller;
 
-    // AppController app_controller;
+    // register theme
+    qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), APP_URI, 1, 0, "Theme");
 
-    // // register theme
-    // qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), APP_URI, 1, 0, "Theme");
+    // expose controller to qml
+    engine.rootContext()->setContextProperty("app", &app_controller);
 
-    // // expose controller to qml
-    // engine.rootContext()->setContextProperty("app", &app_controller);
+    // load main qml
+    engine.loadFromModule(APP_URI, "Main");
 
-    // // load main qml
-    // engine.loadFromModule(APP_URI, "Main");
+    if (engine.rootObjects().isEmpty()) {
+        return -1;
+    }
 
-    // if (engine.rootObjects().isEmpty()) {
-    //     return -1;
-    // }
-
-    // return app.exec();
+    return app.exec();
 }

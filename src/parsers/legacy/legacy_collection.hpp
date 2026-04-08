@@ -1,23 +1,21 @@
 #pragma once
 
-#include <cstdint>
 #include <string>
 #include <vector>
 
-// === collection.db ===
-struct legacy_collection {
+struct LegacyCollection {
     std::string name;
-    int32_t beatmaps_count = 0;
+    int beatmaps_count = 0;
     std::vector<std::string> beatmap_md5;
 };
 
-struct osu_legacy_collection {
-    int32_t version = 0;
-    int32_t collections_count = 0;
-    std::vector<legacy_collection> collections;
+struct OsuLegacyCollection {
+    int version = 0;
+    int collections_count = 0;
+    std::vector<LegacyCollection> collections;
 };
 
 namespace legacy_collection_parser {
-    bool parse(const std::string location, osu_legacy_collection* data);
-    bool write(const std::string location, osu_legacy_collection* data);
+    bool parse(const std::string location, OsuLegacyCollection* data);
+    bool write(const std::string location, OsuLegacyCollection* data);
 };

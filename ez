@@ -290,10 +290,14 @@ def build_wine_env() -> dict[str, str]:
     return env
 
 def configure(debug: bool, platform: str) -> int:
-    if platform == "windows": return configure_windows(debug)
-    if platform == "linux":   return configure_linux(debug)
-    if SYSTEM == "Linux":     return configure_linux(debug)
-    if SYSTEM == "Windows":   return configure_windows(debug)
+    if platform == "windows":
+        return configure_windows(debug)
+    if platform == "linux":
+        return configure_linux(debug)
+    if SYSTEM == "Linux":
+        return configure_linux(debug)
+    if SYSTEM == "Windows":
+        return configure_windows(debug)
     print(f"unsupported platform: {SYSTEM}")
     return 1
 

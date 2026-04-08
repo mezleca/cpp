@@ -1,9 +1,9 @@
 #include "beatmap.hpp"
 #include "beatmap_writer.hpp"
+#include "parsers/utils/binary.hpp"
 
 #include <algorithm>
 #include <climits>
-#include <charconv>
 #include <functional>
 #include <fstream>
 #include <string_view>
@@ -59,25 +59,6 @@ static std::string normalize_path(const std::string& path) {
 static std::string_view get_extension(std::string_view filename) {
     size_t dot = filename.find_last_of('.');
     return (dot != std::string_view::npos) ? filename.substr(dot) : "";
-}
-
-static int parse_int(std::string_view s, int def = 0) {
-    int result = def;
-    auto t = trim_view(s);
-    std::from_chars(t.data(), t.data() + t.size(), result);
-    return result;
-}
-
-static double parse_double(std::string_view s, double def = 0.0) {
-    auto t = trim_view(s);
-    if (t.empty()) {
-        return def;
-    }
-    try {
-        return std::stod(std::string(t));
-    } catch (...) {
-        return def;
-    }
 }
 
 static std::string remove_quotes(std::string_view s) {
@@ -149,8 +130,8 @@ static std::vector<std::string_view> get_section(std::string_view content, std::
     return result;
 }
 
-static general_section parse_general(const std::vector<std::string_view>& lines) {
-    general_section s;
+static GeneralSection parse_general(const std::vector<std::string_view>& lines) {
+    GeneralSection s;
 
     for (const auto& line : lines) {
         auto [key, val] = split_key_value(line);
@@ -158,48 +139,48 @@ static general_section parse_general(const std::vector<std::string_view>& lines)
         if (key == "AudioFilename")
             s.audio_filename = std::string(val);
         else if (key == "AudioLeadIn")
-            s.audio_lead_in = parse_int(val, 0);
+            s.audio_lead_in = binary::convert_to<int>(val, 0);
         else if (key == "AudioHash")
             s.audio_hash = std::string(val);
         else if (key == "PreviewTime")
-            s.preview_time = parse_int(val, -1);
+            s.preview_time = binary::convert_to<int>(val, -1);
         else if (key == "Countdown")
-            s.countdown = parse_int(val, 1);
+            s.countdown = binary::convert_to<int>(val, 1);
         else if (key == "SampleSet")
             s.sample_set = std::string(val);
         else if (key == "StackLeniency")
-            s.stack_leniency = parse_double(val, 0.7);
+            s.stack_leniency = binary::convert_to<double>(val, 0.7);
         else if (key == "Mode")
-            s.mode = parse_int(val, 0);
+            s.mode = binary::convert_to<int>(val, 0);
         else if (key == "LetterboxInBreaks")
-            s.letterbox_in_breaks = parse_int(val, 0);
+            s.letterbox_in_breaks = binary::convert_to<int>(val, 0);
         else if (key == "StoryFireInFront")
-            s.story_fire_in_front = parse_int(val, 1);
+            s.story_fire_in_front = binary::convert_to<int>(val, 1);
         else if (key == "UseSkinSprites")
-            s.use_skin_sprites = parse_int(val, 0);
+            s.use_skin_sprites = binary::convert_to<int>(val, 0);
         else if (key == "AlwaysShowPlayfield")
-            s.always_show_playfield = parse_int(val, 0);
+            s.always_show_playfield = binary::convert_to<int>(val, 0);
         else if (key == "OverlayPosition")
             s.overlay_position = std::string(val);
         else if (key == "SkinPreference")
             s.skin_preference = std::string(val);
         else if (key == "EpilepsyWarning")
-            s.epilepsy_warning = parse_int(val, 0);
+            s.epilepsy_warning = binary::convert_to<int>(val, 0);
         else if (key == "CountdownOffset")
-            s.countdown_offset = parse_int(val, 0);
+            s.countdown_offset = binary::convert_to<int>(val, 0);
         else if (key == "SpecialStyle")
-            s.special_style = parse_int(val, 0);
+            s.special_style = binary::convert_to<int>(val, 0);
         else if (key == "WidescreenStoryboard")
-            s.widescreen_storyboard = parse_int(val, 0);
+            s.widescreen_storyboard = binary::convert_to<int>(val, 0);
         else if (key == "SamplesMatchPlaybackRate")
-            s.samples_match_playback_rate = parse_int(val, 0);
+            s.samples_match_playback_rate = binary::convert_to<int>(val, 0);
     }
 
     return s;
 }
 
-static editor_section parse_editor(const std::vector<std::string_view>& lines) {
-    editor_section s;
+static EditorSection parse_editor(const std::vector<std::string_view>& lines) {
+    EditorSection s;
 
     for (const auto& line : lines) {
         auto [key, val] = split_key_value(line);
@@ -208,24 +189,24 @@ static editor_section parse_editor(const std::vector<std::string_view>& lines) {
             for (const auto& p : split_view(val, ',')) {
                 auto t = trim_view(p);
                 if (!t.empty()) {
-                    s.bookmarks.push_back(parse_int(t, 0));
+                    s.bookmarks.push_back(binary::convert_to<int>(t, 0));
                 }
             }
         } else if (key == "DistanceSpacing")
-            s.distance_spacing = parse_double(val, 1.0);
+            s.distance_spacing = binary::convert_to<double>(val, 1.0);
         else if (key == "BeatDivisor")
-            s.beat_divisor = parse_int(val, 4);
+            s.beat_divisor = binary::convert_to<int>(val, 4);
         else if (key == "GridSize")
-            s.grid_size = parse_int(val, 4);
+            s.grid_size = binary::convert_to<int>(val, 4);
         else if (key == "TimelineZoom")
-            s.timeline_zoom = parse_double(val, 1.0);
+            s.timeline_zoom = binary::convert_to<double>(val, 1.0);
     }
 
     return s;
 }
 
-static metadata_section parse_metadata(const std::vector<std::string_view>& lines) {
-    metadata_section s;
+static MetadataSection parse_metadata(const std::vector<std::string_view>& lines) {
+    MetadataSection s;
 
     for (const auto& line : lines) {
         auto [key, val] = split_key_value(line);
@@ -247,39 +228,39 @@ static metadata_section parse_metadata(const std::vector<std::string_view>& line
         else if (key == "Tags")
             s.tags = std::string(val);
         else if (key == "BeatmapID")
-            s.beatmap_id = parse_int(val, -1);
+            s.beatmap_id = binary::convert_to<int>(val, -1);
         else if (key == "BeatmapSetID")
-            s.beatmap_set_id = parse_int(val, -1);
+            s.beatmap_set_id = binary::convert_to<int>(val, -1);
     }
 
     return s;
 }
 
-static difficulty_section parse_difficulty(const std::vector<std::string_view>& lines) {
-    difficulty_section s;
+static DifficultySection parse_difficulty(const std::vector<std::string_view>& lines) {
+    DifficultySection s;
 
     for (const auto& line : lines) {
         auto [key, val] = split_key_value(line);
 
         if (key == "HPDrainRate")
-            s.hp_drain_rate = parse_double(val, 5.0);
+            s.hp_drain_rate = binary::convert_to<double>(val, 5.0);
         else if (key == "CircleSize")
-            s.circle_size = parse_double(val, 5.0);
+            s.circle_size = binary::convert_to<double>(val, 5.0);
         else if (key == "OverallDifficulty")
-            s.overall_difficulty = parse_double(val, 5.0);
+            s.overall_difficulty = binary::convert_to<double>(val, 5.0);
         else if (key == "ApproachRate")
-            s.approach_rate = parse_double(val, 5.0);
+            s.approach_rate = binary::convert_to<double>(val, 5.0);
         else if (key == "SliderMultiplier")
-            s.slider_multiplier = parse_double(val, 1.4);
+            s.slider_multiplier = binary::convert_to<double>(val, 1.4);
         else if (key == "SliderTickRate")
-            s.slider_tick_rate = parse_double(val, 1.0);
+            s.slider_tick_rate = binary::convert_to<double>(val, 1.0);
     }
 
     return s;
 }
 
-void parse_events(const std::vector<std::string_view>& lines, std::optional<event_background>& bg,
-                  std::optional<event_video>& vid, std::vector<event_break>& breaks) {
+void parse_events(const std::vector<std::string_view>& lines, std::optional<EventBackground>& bg,
+                  std::optional<EventVideo>& vid, std::vector<EventBreak>& breaks) {
     for (const auto& line : lines) {
         auto parts = split_view(line, ',');
         if (parts.empty()) {
@@ -293,12 +274,12 @@ void parse_events(const std::vector<std::string_view>& lines, std::optional<even
             std::string ext = to_lower(get_extension(filename));
 
             if (get_image_extensions().count(ext)) {
-                event_background b;
+                EventBackground b;
                 b.filename = normalize_path(filename);
                 if (parts.size() >= 4)
-                    b.x_offset = parse_int(parts[3], 0);
+                    b.x_offset = binary::convert_to<int>(parts[3], 0);
                 if (parts.size() >= 5)
-                    b.y_offset = parse_int(parts[4], 0);
+                    b.y_offset = binary::convert_to<int>(parts[4], 0);
                 bg = b;
             }
         } else if ((type == "1" || type == "Video") && parts.size() >= 3) {
@@ -306,26 +287,26 @@ void parse_events(const std::vector<std::string_view>& lines, std::optional<even
             std::string ext = to_lower(get_extension(filename));
 
             if (get_video_extensions().count(ext)) {
-                event_video v;
-                v.start_time = parse_int(parts[1], 0);
+                EventVideo v;
+                v.start_time = binary::convert_to<int>(parts[1], 0);
                 v.filename = normalize_path(filename);
                 if (parts.size() >= 4)
-                    v.x_offset = parse_int(parts[3], 0);
+                    v.x_offset = binary::convert_to<int>(parts[3], 0);
                 if (parts.size() >= 5)
-                    v.y_offset = parse_int(parts[4], 0);
+                    v.y_offset = binary::convert_to<int>(parts[4], 0);
                 vid = v;
             }
         } else if ((type == "2" || type == "Break") && parts.size() >= 3) {
-            event_break b;
-            b.start_time = parse_int(parts[1], 0);
-            b.end_time = parse_int(parts[2], 0);
+            EventBreak b;
+            b.start_time = binary::convert_to<int>(parts[1], 0);
+            b.end_time = binary::convert_to<int>(parts[2], 0);
             breaks.push_back(b);
         }
     }
 }
 
-static std::vector<timing_point> parse_timing_points(const std::vector<std::string_view>& lines) {
-    std::vector<timing_point> points;
+static std::vector<TimingPoint> parse_timing_points(const std::vector<std::string_view>& lines) {
+    std::vector<TimingPoint> points;
     points.reserve(lines.size());
 
     for (const auto& line : lines) {
@@ -334,21 +315,21 @@ static std::vector<timing_point> parse_timing_points(const std::vector<std::stri
             continue;
         }
 
-        timing_point tp;
-        tp.time = parse_int(parts[0], 0);
-        tp.beat_length = parse_double(parts[1], 0.0);
+        TimingPoint tp;
+        tp.time = binary::convert_to<int>(parts[0], 0);
+        tp.beat_length = binary::convert_to<double>(parts[1], 0.0);
         if (parts.size() > 2)
-            tp.meter = parse_int(parts[2], 4);
+            tp.meter = binary::convert_to<int>(parts[2], 4);
         if (parts.size() > 3)
-            tp.sample_set = parse_int(parts[3], 0);
+            tp.sample_set = binary::convert_to<int>(parts[3], 0);
         if (parts.size() > 4)
-            tp.sample_index = parse_int(parts[4], 0);
+            tp.sample_index = binary::convert_to<int>(parts[4], 0);
         if (parts.size() > 5)
-            tp.volume = parse_int(parts[5], 100);
+            tp.volume = binary::convert_to<int>(parts[5], 100);
         if (parts.size() > 6)
-            tp.uninherited = parse_int(parts[6], 1);
+            tp.uninherited = binary::convert_to<int>(parts[6], 1);
         if (parts.size() > 7)
-            tp.effects = parse_int(parts[7], 0);
+            tp.effects = binary::convert_to<int>(parts[7], 0);
 
         points.push_back(tp);
     }
@@ -356,8 +337,8 @@ static std::vector<timing_point> parse_timing_points(const std::vector<std::stri
     return points;
 }
 
-static colour_section parse_colours(const std::vector<std::string_view>& lines) {
-    colour_section s;
+static ColourSection parse_colours(const std::vector<std::string_view>& lines) {
+    ColourSection s;
 
     for (const auto& line : lines) {
         auto [key, val] = split_key_value(line);
@@ -367,7 +348,7 @@ static colour_section parse_colours(const std::vector<std::string_view>& lines) 
             continue;
         }
 
-        std::array<int, 3> color = {parse_int(parts[0], 0), parse_int(parts[1], 0), parse_int(parts[2], 0)};
+        std::array<int, 3> color = {binary::convert_to<int>(parts[0], 0), binary::convert_to<int>(parts[1], 0), binary::convert_to<int>(parts[2], 0)};
 
         if (key.find("Combo") != std::string_view::npos) {
             s.combos.push_back(color);
@@ -381,30 +362,30 @@ static colour_section parse_colours(const std::vector<std::string_view>& lines) 
     return s;
 }
 
-static hit_sample parse_hit_sample(std::string_view str) {
-    hit_sample hs;
+static HitSample parse_hit_sample(std::string_view str) {
+    HitSample hs;
     auto parts = split_view(str, ':');
 
     if (!parts.empty())
-        hs.normal_set = parse_int(parts[0], 0);
+        hs.normal_set = binary::convert_to<int>(parts[0], 0);
     if (parts.size() > 1)
-        hs.addition_set = parse_int(parts[1], 0);
+        hs.addition_set = binary::convert_to<int>(parts[1], 0);
     if (parts.size() > 2)
-        hs.index = parse_int(parts[2], 0);
+        hs.index = binary::convert_to<int>(parts[2], 0);
     if (parts.size() > 3)
-        hs.volume = parse_int(parts[3], 0);
+        hs.volume = binary::convert_to<int>(parts[3], 0);
     if (parts.size() > 4)
         hs.filename = std::string(trim_view(parts[4]));
 
     return hs;
 }
 
-static hit_sample default_hit_sample() {
+static HitSample default_hit_sample() {
     return parse_hit_sample("0:0:0:0:");
 }
 
-static std::vector<hit_object> parse_hit_objects(const std::vector<std::string_view>& lines) {
-    std::vector<hit_object> objects;
+static std::vector<HitObject> parse_hit_objects(const std::vector<std::string_view>& lines) {
+    std::vector<HitObject> objects;
     objects.reserve(lines.size());
 
     for (const auto& line : lines) {
@@ -413,12 +394,12 @@ static std::vector<hit_object> parse_hit_objects(const std::vector<std::string_v
             continue;
         }
 
-        hit_object ho;
-        ho.x = parse_int(parts[0], 0);
-        ho.y = parse_int(parts[1], 0);
-        ho.time = parse_int(parts[2], 0);
-        ho.type = parse_int(parts[3], 0);
-        ho.hit_sound = parse_int(parts[4], 0);
+        HitObject ho;
+        ho.x = binary::convert_to<int>(parts[0], 0);
+        ho.y = binary::convert_to<int>(parts[1], 0);
+        ho.time = binary::convert_to<int>(parts[2], 0);
+        ho.type = binary::convert_to<int>(parts[3], 0);
+        ho.hit_sound = binary::convert_to<int>(parts[4], 0);
 
         bool is_circle = (ho.type & 1) != 0;
         bool is_slider = (ho.type & 2) != 0;
@@ -437,18 +418,18 @@ static std::vector<hit_object> parse_hit_objects(const std::vector<std::string_v
                 for (size_t i = 1; i < curve_parts.size(); i++) {
                     auto point = split_view(curve_parts[i], ':');
                     if (point.size() >= 2) {
-                        ho.curve_points.push_back({parse_int(point[0], 0), parse_int(point[1], 0)});
+                        ho.curve_points.push_back({binary::convert_to<int>(point[0], 0), binary::convert_to<int>(point[1], 0)});
                     }
                 }
             }
 
-            ho.slides = std::max(0, parse_int(parts[6], 1));
-            ho.length = parse_double(parts[7], 0.0);
+            ho.slides = std::max(0, binary::convert_to<int>(parts[6], 1));
+            ho.length = binary::convert_to<double>(parts[7], 0.0);
             size_t edge_count = static_cast<size_t>(ho.slides) + 1;
 
             if (parts.size() > 8) {
                 for (const auto& s : split_view(parts[8], '|')) {
-                    ho.edge_sounds.push_back(parse_int(s, 0));
+                    ho.edge_sounds.push_back(binary::convert_to<int>(s, 0));
                 }
             } else {
                 ho.edge_sounds.assign(edge_count, 0);
@@ -458,7 +439,7 @@ static std::vector<hit_object> parse_hit_objects(const std::vector<std::string_v
                 for (const auto& ep : split_view(parts[9], '|')) {
                     auto set = split_view(ep, ':');
                     if (set.size() >= 2) {
-                        ho.edge_sets.push_back({parse_int(set[0], 0), parse_int(set[1], 0)});
+                        ho.edge_sets.push_back({binary::convert_to<int>(set[0], 0), binary::convert_to<int>(set[1], 0)});
                     }
                 }
             } else {
@@ -471,7 +452,7 @@ static std::vector<hit_object> parse_hit_objects(const std::vector<std::string_v
                 ho.sample = default_hit_sample();
             }
         } else if (is_spinner && parts.size() >= 6) {
-            ho.end_time = parse_int(parts[5], 0);
+            ho.end_time = binary::convert_to<int>(parts[5], 0);
             if (parts.size() > 6) {
                 ho.sample = parse_hit_sample(parts[6]);
             } else {
@@ -480,7 +461,7 @@ static std::vector<hit_object> parse_hit_objects(const std::vector<std::string_v
         } else if (is_hold && parts.size() >= 6) {
             auto hold_parts = split_view(parts[5], ':');
             if (!hold_parts.empty()) {
-                ho.end_time = parse_int(hold_parts[0], 0);
+                ho.end_time = binary::convert_to<int>(hold_parts[0], 0);
             }
             if (hold_parts.size() > 1) {
                 std::string sample_str;
@@ -511,7 +492,7 @@ static int parse_version(std::string_view content) {
 
     size_t v_pos = first_line.find('v');
     if (v_pos != std::string_view::npos) {
-        return parse_int(first_line.substr(v_pos + 1), 14);
+        return binary::convert_to<int>(first_line.substr(v_pos + 1), 14);
     }
 
     return 14;
@@ -541,12 +522,12 @@ static bool read_file_text(const std::string& location, std::string& out) {
     return true;
 }
 
-static std::string serialize_hit_sample(const hit_sample& hs) {
+static std::string serialize_hit_sample(const HitSample& hs) {
     return std::to_string(hs.normal_set) + ":" + std::to_string(hs.addition_set) + ":" + std::to_string(hs.index) +
            ":" + std::to_string(hs.volume) + ":" + hs.filename;
 }
 
-static std::string serialize_curve(const hit_object& ho) {
+static std::string serialize_curve(const HitObject& ho) {
     std::ostringstream ss;
     ss << ho.curve_type;
     for (const auto& pt : ho.curve_points) {
@@ -555,7 +536,7 @@ static std::string serialize_curve(const hit_object& ho) {
     return ss.str();
 }
 
-bool beatmap_parser::parse(std::string location) {
+bool BeatmapParser::parse(std::string location) {
     if (data == nullptr) {
         last_error = "parser data is null";
         return false;
@@ -571,7 +552,7 @@ bool beatmap_parser::parse(std::string location) {
 
     const int parsed_version = parse_version(content);
 
-    *data = osu_beatmap();
+    *data = OsuBeatmap();
     data->version = parsed_version;
     data->general = parse_general(get_section(content, "General"));
     data->editor = parse_editor(get_section(content, "Editor"));
@@ -590,13 +571,13 @@ bool beatmap_parser::parse(std::string location) {
     return true;
 }
 
-bool beatmap_parser::write() {
+bool BeatmapParser::write() {
     if (data == nullptr || location.empty()) {
         last_error = data == nullptr ? "parser data is null" : "location is empty";
         return false;
     }
 
-    beatmap_writer writer;
+    BeatmapWriter writer;
 
     writer.line("osu file format v" + std::to_string(data->version));
     writer.blank();
@@ -635,7 +616,7 @@ bool beatmap_parser::write() {
     writer.section("Editor");
 
     if (!data->editor.bookmarks.empty()) {
-        writer.key_value("Bookmarks", beatmap_writer::join_ints(data->editor.bookmarks, ','));
+        writer.key_value("Bookmarks", BeatmapWriter::join_ints(data->editor.bookmarks, ','));
     }
 
     writer.key_value_double("DistanceSpacing", data->editor.distance_spacing);
@@ -707,7 +688,7 @@ bool beatmap_parser::write() {
     writer.section("TimingPoints");
 
     for (const auto& tp : data->timing_points) {
-        writer.line(std::to_string(tp.time) + "," + beatmap_writer::format_double(tp.beat_length) + "," +
+        writer.line(std::to_string(tp.time) + "," + BeatmapWriter::format_double(tp.beat_length) + "," +
                     std::to_string(tp.meter) + "," + std::to_string(tp.sample_set) + "," +
                     std::to_string(tp.sample_index) + "," + std::to_string(tp.volume) + "," +
                     std::to_string(tp.uninherited) + "," + std::to_string(tp.effects));
@@ -769,9 +750,9 @@ bool beatmap_parser::write() {
 
             line << "," << serialize_curve(ho);
             line << "," << ho.slides;
-            line << "," << beatmap_writer::format_double(ho.length);
-            line << "," << beatmap_writer::join_ints(edge_sounds, '|');
-            line << "," << beatmap_writer::join_pairs(edge_sets, '|');
+            line << "," << BeatmapWriter::format_double(ho.length);
+            line << "," << BeatmapWriter::join_ints(edge_sounds, '|');
+            line << "," << BeatmapWriter::join_pairs(edge_sets, '|');
             line << "," << serialize_hit_sample(ho.sample);
         } else if (is_spinner) {
             line << "," << ho.end_time;

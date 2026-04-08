@@ -4,7 +4,7 @@
 #include <vector>
 #include <miniz.h>
 
-namespace osu_binary {
+namespace binary {
     inline bool gzip_decompress(const std::vector<uint8_t>& input, std::vector<uint8_t>& output) {
         if (input.empty()) {
             return true;

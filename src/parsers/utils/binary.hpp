@@ -7,19 +7,22 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+#include <charconv>
 
-namespace osu_binary {
-    struct binary_cursor {
+#include "fmt/base.h"
+
+namespace binary {
+    struct BinaryCursor {
         const std::vector<uint8_t>* buffer = nullptr;
         size_t offset = 0;
     };
 
-    inline void set_cursor(binary_cursor& cursor, const std::vector<uint8_t>& data) {
+    inline void set_cursor(BinaryCursor& cursor, const std::vector<uint8_t>& data) {
         cursor.buffer = &data;
         cursor.offset = 0;
     }
 
-    inline void ensure_range(const binary_cursor& cursor, size_t bytes) {
+    inline void ensure_range(const BinaryCursor& cursor, size_t bytes) {
         if (!cursor.buffer) {
             throw std::runtime_error("binary read out of range");
         }
@@ -64,7 +67,7 @@ namespace osu_binary {
         return static_cast<T>(uvalue);
     }
 
-    template <typename T> inline T read_integral(binary_cursor& cursor) {
+    template <typename T> inline T read_integral(BinaryCursor& cursor) {
         using U = std::make_unsigned_t<T>;
         U value = 0;
         ensure_range(cursor, sizeof(T));
@@ -76,57 +79,57 @@ namespace osu_binary {
         return byteswap(static_cast<T>(value));
     }
 
-    inline uint8_t read_u8(binary_cursor& cursor) {
+    inline uint8_t read_u8(BinaryCursor& cursor) {
         return read_integral<uint8_t>(cursor);
     }
 
-    inline int8_t read_i8(binary_cursor& cursor) {
+    inline int8_t read_i8(BinaryCursor& cursor) {
         return read_integral<int8_t>(cursor);
     }
 
-    inline uint16_t read_u16(binary_cursor& cursor) {
+    inline uint16_t read_u16(BinaryCursor& cursor) {
         return read_integral<uint16_t>(cursor);
     }
 
-    inline int16_t read_i16(binary_cursor& cursor) {
+    inline int16_t read_i16(BinaryCursor& cursor) {
         return read_integral<int16_t>(cursor);
     }
 
-    inline uint32_t read_u32(binary_cursor& cursor) {
+    inline uint32_t read_u32(BinaryCursor& cursor) {
         return read_integral<uint32_t>(cursor);
     }
 
-    inline int32_t read_i32(binary_cursor& cursor) {
-        return read_integral<int32_t>(cursor);
+    inline int read_i32(BinaryCursor& cursor) {
+        return read_integral<int>(cursor);
     }
 
-    inline uint64_t read_u64(binary_cursor& cursor) {
+    inline uint64_t read_u64(BinaryCursor& cursor) {
         return read_integral<uint64_t>(cursor);
     }
 
-    inline int64_t read_i64(binary_cursor& cursor) {
+    inline int64_t read_i64(BinaryCursor& cursor) {
         return read_integral<int64_t>(cursor);
     }
 
-    inline float read_f32(binary_cursor& cursor) {
+    inline float read_f32(BinaryCursor& cursor) {
         uint32_t bits = read_u32(cursor);
         float value = 0.0f;
         std::memcpy(&value, &bits, sizeof(value));
         return value;
     }
 
-    inline double read_f64(binary_cursor& cursor) {
+    inline double read_f64(BinaryCursor& cursor) {
         uint64_t bits = read_u64(cursor);
         double value = 0.0;
         std::memcpy(&value, &bits, sizeof(value));
         return value;
     }
 
-    inline bool read_bool(binary_cursor& cursor) {
+    inline bool read_bool(BinaryCursor& cursor) {
         return read_u8(cursor) != 0;
     }
 
-    inline uint32_t read_uleb128(binary_cursor& cursor) {
+    inline uint32_t read_uleb128(BinaryCursor& cursor) {
         uint32_t result = 0;
         int shift = 0;
         bool has_more = true;
@@ -152,7 +155,7 @@ namespace osu_binary {
         return result;
     }
 
-    inline std::string read_string(binary_cursor& cursor) {
+    inline std::string read_string(BinaryCursor& cursor) {
         uint8_t marker = read_u8(cursor);
         if (marker == 0x00) {
             return "";
@@ -169,7 +172,7 @@ namespace osu_binary {
         return value;
     }
 
-    inline std::string read_string2(binary_cursor& cursor) {
+    inline std::string read_string2(BinaryCursor& cursor) {
         uint32_t length = read_uleb128(cursor);
         ensure_range(cursor, length);
         std::string value(reinterpret_cast<const char*>(cursor.buffer->data() + cursor.offset), length);
@@ -177,7 +180,7 @@ namespace osu_binary {
         return value;
     }
 
-    inline void skip(binary_cursor& cursor, size_t bytes) {
+    inline void skip(BinaryCursor& cursor, size_t bytes) {
         ensure_range(cursor, bytes);
         cursor.offset += bytes;
     }
@@ -212,7 +215,7 @@ namespace osu_binary {
         append_integral(out, value);
     }
 
-    inline void write_i32(std::vector<uint8_t>& out, int32_t value) {
+    inline void write_i32(std::vector<uint8_t>& out, int value) {
         append_integral(out, value);
     }
 
@@ -300,4 +303,34 @@ namespace osu_binary {
 
         return file.good();
     }
+
+	template <typename T>
+	T str_to(std::string_view sv, T _d = T()) {
+		T value = {};
+		auto result = std::from_chars(sv.data(), sv.data() + sv.size(), value);
+
+		if (result.ec == std::errc::invalid_argument || result.ptr != sv.data() + sv.size()) {
+			fmt::println("str_to<{}>(): failed to convert {}", typeid(T).name(), sv);
+			return _d;
+		}
+
+		return value;
+	}
+
+    template <typename T>
+    inline static T convert_to(std::string_view value, T _d = T()) {
+		if constexpr (std::is_same_v<T, int>) {
+			return str_to<int>(value);
+		} else if constexpr (std::is_same_v<T, float>) {
+			return str_to<float>(value);
+		} else if constexpr (std::is_same_v<T, double>) {
+			return str_to<double>(value);
+		} else if constexpr (std::is_same_v<T, const char*>) {
+			return value;
+		} else if constexpr (std::is_same_v<T, std::string>) {
+		    return std::string(value);
+		} else {
+			return _d;
+		}
+	}
 }
