@@ -1,11 +1,11 @@
 #pragma once
 
+#include "fmt/base.h"
 #include <bitset>
 #include <string_view>
 
 enum class QueryOp : int { INVALID = -1, EQ, NEQ, GT, LT, GTE, LTE };
-
-enum class ParseState : int { KEY, VALUE };
+enum class ParseState : int { KEY = 0, VALUE };
 
 static constexpr std::bitset<256> make_op_start_table() {
     std::bitset<256> table{};
@@ -27,21 +27,24 @@ struct QueryToken {
 };
 
 struct QueryState {
+    std::string query;
+
     size_t key_start;
     size_t op_start;
     size_t op_end;
     size_t value_end;
 
+    bool in_quotes = false;
+
     ParseState value = ParseState::KEY;
     QueryOp op = QueryOp::INVALID;
     QueryToken token = {};
 
-    bool hit;
-
     void reset() {
         value = ParseState::KEY;
+        in_quotes = false;
 
-        key_start = 0;
+        key_start = -1;
         op_start = 0;
         op_end = 0;
         value_end = 0;
@@ -90,23 +93,18 @@ namespace query {
         return {QueryOp::INVALID, 0};
     }
 
-    template <typename F, typename S>
-    inline std::pair<std::string, bool> parse(std::string_view data, F d, S s) {
+    template <typename EvalFn>
+    inline std::pair<bool, QueryState> parse(std::string_view data, EvalFn&& eval) {
         QueryState m_state = {};
-        std::string content;
 
         for (size_t i = 0; i < data.length(); i++) {
-            if (m_state.hit) {
-                break;
-            }
-
             bool is_last = data.length() - 1 == i;
             char c = data[i];
 
             switch (m_state.value) {
                 case ParseState::KEY: {
-                    if (c == ' ' && !is_last) {
-                        m_state.key_start = i + 1;
+                    if (m_state.key_start == -1) {
+                        m_state.key_start = i;
                     }
 
                     // is a operator?
@@ -116,7 +114,7 @@ namespace query {
 
                         // invalidate duplicated op's
                         if (!is_last && c != '=' && data[i + 1] == c) {
-                            content += content.substr(m_state.key_start, i - 1);
+                            m_state.query += data.substr(m_state.key_start, i - 1);
                         } else {
                             m_state.value = ParseState::VALUE;
                             m_state.op_start = i;
@@ -125,41 +123,50 @@ namespace query {
 
                         continue;
                     }
-
-                    if (m_state.key_start == 0) {
-                        m_state.key_start = i;
-                    }
                 } break;
                 case ParseState::VALUE: {
-                    if (c == ' ' || is_last) {
+                    m_state.value_end = i;
+                    bool is_char_quote = c == '"';
+
+                    // skip on opening quote
+                    if (!m_state.in_quotes && is_char_quote) {
+                        m_state.in_quotes = true;
+                        continue;
+                    }
+
+                    bool is_ending_quote = m_state.in_quotes && is_char_quote;
+                    bool is_separator = !m_state.in_quotes && c == ' ';
+                    bool is_unquoted_last = !m_state.in_quotes && is_last;
+
+                    bool should_evaluate = is_ending_quote || is_separator || is_unquoted_last;
+
+                    if (should_evaluate) {
+                        size_t value_start = m_state.op_end;
+                        size_t value_length = m_state.value_end - value_start;
+
+                        if (is_ending_quote) {
+                            value_start += 1;
+                            value_length -= 1;
+                        } else if (is_unquoted_last) {
+                            value_length += 1; // include last char
+                        }
+
                         m_state.token = {
-                            .key = content.substr(m_state.key_start, m_state.op_start - m_state.key_start),
-                            .value = content.substr(m_state.op_end, m_state.value_end - m_state.op_end + 1),
+                            .key = data.substr(m_state.key_start, m_state.op_start - m_state.key_start),
+                            .value = data.substr(value_start, value_length),
                             .op = m_state.op,
                         };
 
-                        auto eval = d(m_state.token.key, m_state.token.op);
-
-                        if (eval == nullptr) {
-                            m_state.reset();
-                            continue;
-                        }
-
-                        // early exit if the eval hits false
-                        if (!eval(s, m_state.token.value)) {
-                            m_state.hit = true;
-                            break;
+                        if (eval(m_state.token)) {
+                            return {true, m_state};
                         }
 
                         m_state.reset();
-                        break;
                     }
-
-                    m_state.value_end = i;
                 } break;
-                default:
-                    break;
             }
         }
+
+        return {false, m_state};
     }
 }

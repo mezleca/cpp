@@ -397,7 +397,7 @@ def main():
 
     _ = parser.add_argument(
         "--platform",
-        choices=["auto", "linux", "windows", "win"],
+        choices=["auto", "linux", "windows"],
         default="auto",
         help="override target platform for configure"
     )
@@ -409,9 +409,6 @@ def main():
     )
 
     args = parser.parse_args()
-
-    if args.platform == "win":
-        args.platform = "windows"
 
     commands = {
         "init":      init,
