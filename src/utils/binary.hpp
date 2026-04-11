@@ -339,7 +339,7 @@ namespace binary {
         }
     }
 
-    inline std::string normalize_and_lower(std::string& s) {
+    inline std::string normalize_and_lower(std::string s) {
         std::string normalized = boost::locale::normalize(s, boost::locale::norm_type::norm_nfd);
         return boost::locale::to_lower(normalized);
     }
