@@ -1,8 +1,9 @@
 #pragma once
 
-#include "fmt/base.h"
 #include <bitset>
+#include <climits>
 #include <string_view>
+#include <vector>
 
 enum class QueryOp : int { INVALID = -1, EQ, NEQ, GT, LT, GTE, LTE };
 enum class ParseState : int { KEY = 0, VALUE };
@@ -27,8 +28,6 @@ struct QueryToken {
 };
 
 struct QueryState {
-    std::string query;
-
     size_t key_start;
     size_t op_start;
     size_t op_end;
@@ -44,11 +43,16 @@ struct QueryState {
         value = ParseState::KEY;
         in_quotes = false;
 
-        key_start = -1;
+        key_start = INT_MAX; // uhhh
         op_start = 0;
         op_end = 0;
         value_end = 0;
     }
+};
+
+struct ParsedQuery {
+    std::vector<QueryToken> tokens;
+    std::string content;
 };
 
 namespace query {
@@ -93,9 +97,11 @@ namespace query {
         return {QueryOp::INVALID, 0};
     }
 
-    template <typename EvalFn>
-    inline std::pair<bool, QueryState> parse(std::string_view data, EvalFn&& eval) {
-        QueryState m_state = {};
+    inline ParsedQuery parse(std::string_view data) {
+        ParsedQuery result;
+        QueryState m_state;
+
+        m_state.reset();
 
         for (size_t i = 0; i < data.length(); i++) {
             bool is_last = data.length() - 1 == i;
@@ -103,25 +109,37 @@ namespace query {
 
             switch (m_state.value) {
                 case ParseState::KEY: {
-                    if (m_state.key_start == -1) {
+                    if (m_state.key_start == INT_MAX) {
                         m_state.key_start = i;
+                    }
+
+                    // free text
+                    if (c == ' ') {
+                        result.content += data.substr(m_state.key_start, i - m_state.key_start);
+                        result.content += ' ';
+                        m_state.reset();
+                        continue;
                     }
 
                     // is a operator?
                     if (m_state.key_start < i && OP_START_TABLE[static_cast<unsigned char>(c)]) {
                         auto [op, size] = parse_operator(data, i);
-                        m_state.op = op;
 
                         // invalidate duplicated op's
                         if (!is_last && c != '=' && data[i + 1] == c) {
-                            m_state.query += data.substr(m_state.key_start, i - 1);
+                            result.content += data.substr(m_state.key_start, i - m_state.key_start);
+                            m_state.reset();
                         } else {
+                            m_state.op = op;
                             m_state.value = ParseState::VALUE;
                             m_state.op_start = i;
                             m_state.op_end = m_state.op_start + size;
                         }
+                    }
 
-                        continue;
+                    // flush last word as free text if no operator found
+                    if (is_last) {
+                        result.content += data.substr(m_state.key_start);
                     }
                 } break;
                 case ParseState::VALUE: {
@@ -137,36 +155,33 @@ namespace query {
                     bool is_ending_quote = m_state.in_quotes && is_char_quote;
                     bool is_separator = !m_state.in_quotes && c == ' ';
                     bool is_unquoted_last = !m_state.in_quotes && is_last;
+                    bool has_value = is_ending_quote || is_separator || is_unquoted_last;
 
-                    bool should_evaluate = is_ending_quote || is_separator || is_unquoted_last;
-
-                    if (should_evaluate) {
-                        size_t value_start = m_state.op_end;
-                        size_t value_length = m_state.value_end - value_start;
-
-                        if (is_ending_quote) {
-                            value_start += 1;
-                            value_length -= 1;
-                        } else if (is_unquoted_last) {
-                            value_length += 1; // include last char
-                        }
-
-                        m_state.token = {
-                            .key = data.substr(m_state.key_start, m_state.op_start - m_state.key_start),
-                            .value = data.substr(value_start, value_length),
-                            .op = m_state.op,
-                        };
-
-                        if (eval(m_state.token)) {
-                            return {true, m_state};
-                        }
-
-                        m_state.reset();
+                    if (!has_value) {
+                        continue;
                     }
+
+                    size_t value_start = m_state.op_end;
+                    size_t value_length = m_state.value_end - value_start;
+
+                    if (is_ending_quote) {
+                        value_start += 1;
+                        value_length -= 1;
+                    } else if (is_unquoted_last) {
+                        value_length += 1; // include last char
+                    }
+
+                    result.tokens.push_back({
+                        .key = data.substr(m_state.key_start, m_state.op_start - m_state.key_start),
+                        .value = data.substr(value_start, value_length),
+                        .op = m_state.op,
+                    });
+
+                    m_state.reset();
                 } break;
             }
         }
 
-        return {false, m_state};
+        return result;
     }
 }

@@ -1,6 +1,6 @@
 #include "beatmap.hpp"
 #include "beatmap_writer.hpp"
-#include "parsers/utils/binary.hpp"
+#include "../utils/binary.hpp"
 
 #include <algorithm>
 #include <climits>

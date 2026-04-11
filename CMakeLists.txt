@@ -52,9 +52,21 @@ endif()
 # add dependencies
 add_subdirectory(vendor/fmt)
 add_subdirectory(vendor/cpr)
+add_subdirectory(vendor/magic_enum)
 add_subdirectory(vendor/json)
 add_subdirectory(vendor/miniz)
 add_subdirectory(vendor/realm-cpp)
+
+include(FetchContent)
+
+FetchContent_Declare(
+    Boost
+    URL https://github.com/boostorg/boost/releases/download/boost-1.87.0/boost-1.87.0-cmake.tar.xz
+    DOWNLOAD_EXTRACT_TIMESTAMP ON
+)
+
+set(BOOST_INCLUDE_LIBRARIES locale)
+FetchContent_MakeAvailable(Boost)
 
 if(TARGET cpprealm)
     target_compile_options(cpprealm PRIVATE
@@ -103,6 +115,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     cpr
     cpprealm
     miniz
+    magic_enum
+    Boost::locale
     Qt6::Core
     Qt6::Gui
     Qt6::Qml

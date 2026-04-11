@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -8,7 +9,9 @@
 #include <type_traits>
 #include <vector>
 #include <charconv>
+#include <boost/locale.hpp>
 
+#include "boost/locale/conversion.hpp"
 #include "fmt/base.h"
 
 namespace binary {
@@ -334,6 +337,20 @@ namespace binary {
             return std::string(value);
         } else {
             return _d;
+        }
+    }
+
+    inline std::string normalize_and_lower(std::string& s) {
+        std::string normalized = boost::locale::normalize(s, boost::locale::norm_type::norm_nfd);
+        return boost::locale::to_lower(normalized);
+    }
+
+    template <typename T>
+    inline T lower_if_possible(T value) {
+        if constexpr (std::is_same_v<T, std::string>) {
+            return boost::locale::to_lower(value);
+        } else {
+            return value;
         }
     }
 }

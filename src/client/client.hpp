@@ -1,6 +1,9 @@
 #pragma once
 
 #include "parsers/legacy/legacy.hpp"
+#include "../utils/query.hpp"
+#include "utils/binary.hpp"
+#include <fmt/base.h>
 #include <memory>
 #include <optional>
 #include <string>
@@ -55,17 +58,18 @@ struct OsuBeatmap {
           creator(b.creator), difficulty(b.difficulty), audio_file_name(b.audio_file_name), md5(b.md5),
           osu_file_name(b.osu_file_name), status((BeatmapStatus)b.status), hitcircle(b.hitcircle), sliders(b.sliders),
           spinners(b.spinners), last_modification_time(b.last_modification_time), approach_rate(b.approach_rate),
-          circle_size(b.circle_size), hp_drain(b.hp_drain), overall_difficulty(b.overall_difficulty),
+          circle_size(b.circle_size), hp_drain(b.hp_drain), overall_difficulty(b.overall_difficulty), tags(b.tags),
           slider_velocity(b.slider_velocity), drain_time(b.drain_time), total_time(b.total_time), duration(b.duration),
           audio_preview_time(b.audio_preview_time), difficulty_id(b.difficulty_id), beatmap_id(b.beatmap_id),
           mode((Gamemode)b.mode) {
     }
-
+    std::string searchable;
     std::string artist_unicode;
     std::string title_unicode;
     std::string audio_file_name;
     std::string md5;
     std::string osu_file_name;
+    std::string tags;
 #define X(type, name, ...) type name;
     QUERY_FIELDS
 #undef X
@@ -80,6 +84,13 @@ struct OsuBeatmap {
     int audio_preview_time = 0;
     int difficulty_id = 0;
     int beatmap_id = 0;
+
+    void build_search() {
+        std::string target = title + " " + artist + " " + creator + " " + tags + " " + std::to_string(difficulty_id) +
+                             std::to_string(beatmap_id);
+
+        searchable = binary::normalize_and_lower(target);
+    }
 };
 
 struct OsuBeatmapSet {
@@ -99,6 +110,7 @@ struct OsuSearchData {
 
 class Client {
   public:
+    Client();
     virtual ~Client() = default;
 
     // abstract methods
@@ -113,11 +125,19 @@ class Client {
 
     // client methods
     std::vector<OsuBeatmap*> search_beatmaps(OsuSearchData data);
+    long beatmap_count();
 
   protected:
+    // shared data for osu related stuff
     std::unordered_map<std::string_view, std::unique_ptr<OsuCollection>> m_collections;
     std::unordered_map<std::string, std::unique_ptr<OsuBeatmap>> m_beatmaps;
     std::unordered_map<int, std::unique_ptr<OsuBeatmapSet>> m_beatmapsets;
+
+    using dispatch_fn = bool (*)(const OsuBeatmap&, std::string_view);
+    using beatmap_dispatch = std::unordered_map<QueryOp, dispatch_fn>;
+
+    // dispatch table for query stuff
+    std::unordered_map<std::string_view, beatmap_dispatch> beatmap_table;
 
     bool m_collection_dirty = false;
 };

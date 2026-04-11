@@ -12,10 +12,16 @@
 #define APP_URI "osu_stuff"
 
 int main(int argc, char** argv) {
-    std::clock_t p_start = std::clock();
+    using retarded = std::chrono::steady_clock;
+
+    boost::locale::generator gen;
+    std::locale::global(gen(""));
+
+    auto p_start = retarded::now();
     StableClient client{"/mnt/osu/"};
 
-    fmt::println("took {} to initialize", (std::clock() - p_start) / (double)CLOCKS_PER_SEC);
+    fmt::println("took {} ms to initialize",
+                 std::chrono::duration_cast<std::chrono::milliseconds>(retarded::now() - p_start).count());
     fmt::println("player name: {}", client.get_player_name());
 
     auto c = client.get_collection("good shit");
@@ -43,6 +49,14 @@ int main(int argc, char** argv) {
     if (client.delete_collection("good shit")) {
         fmt::println("removed collection 2");
     }
+
+    auto s_start = retarded::now();
+    std::vector search_result = client.search_beatmaps({.query = "aaa"});
+
+    // thats the cpp beaulty right here
+    fmt::println("took {} ms to search through {} beatmaps and found {} beatmaps",
+                 std::chrono::duration_cast<std::chrono::milliseconds>(retarded::now() - s_start).count(),
+                 client.beatmap_count(), search_result.size());
 
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;

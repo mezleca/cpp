@@ -42,18 +42,20 @@ StableClient::StableClient(std::filesystem::path base) : m_location(base) {
         int beatmapset_id = raw_beatmap.beatmap_id;
 
         auto beatmap = make_beatmap(raw_beatmap);
+        beatmap->build_search();
+
         auto [it, _] = m_beatmaps.emplace(md5, std::move(beatmap));
         auto beatmap_ptr = it->second.get();
+        auto beatmapset_it = m_beatmapsets.find(beatmapset_id);
 
-        if (m_beatmapsets.find(beatmapset_id) == m_beatmapsets.end()) {
+        if (beatmapset_it == m_beatmapsets.end()) {
             auto new_set = make_beatmapset(*beatmap_ptr);
             new_set->beatmaps.emplace_back(beatmap_ptr);
             m_beatmapsets.emplace(beatmapset_id, std::move(new_set));
             continue;
         }
 
-        auto& set = m_beatmapsets.at(beatmapset_id);
-        set->beatmaps.emplace_back(beatmap_ptr);
+        beatmapset_it->second->beatmaps.emplace_back(beatmap_ptr);
     }
 
     // NOTE: as of rn i have no plans to rewrite the .db file so lets just clean for now
@@ -122,9 +124,9 @@ bool StableClient::update_collection() {
 }
 
 OsuBeatmap* StableClient::get_beatmap(std::string md5) {
-    if (m_beatmaps.find(md5) == m_beatmaps.end()) return nullptr;
-    auto& beatmap = m_beatmaps.at(md5);
-    return beatmap.get();
+    auto beatmap_it = m_beatmaps.find(md5);
+    if (beatmap_it == m_beatmaps.end()) return nullptr;
+    return beatmap_it->second.get();
 }
 
 OsuBeatmap* StableClient::get_beatmap_by_id(int id) {
@@ -136,7 +138,7 @@ OsuBeatmap* StableClient::get_beatmap_by_id(int id) {
 }
 
 OsuBeatmapSet* StableClient::get_beatmapset(int id) {
-    if (m_beatmapsets.find(id) == m_beatmapsets.end()) return nullptr;
-    auto& beatmapset = m_beatmapsets.at(id);
-    return beatmapset.get();
+    auto beatmapset_it = m_beatmapsets.find(id);
+    if (beatmapset_it == m_beatmapsets.end()) return nullptr;
+    return beatmapset_it->second.get();
 }
