@@ -1,10 +1,6 @@
 #include "client.hpp"
-#include "../utils/query.hpp"
-#include "boost/locale/conversion.hpp"
+#include "utils/query.hpp"
 #include "utils/binary.hpp"
-
-#include <fmt/base.h>
-#include <string_view>
 
 Client::Client() {
 // dispatch table for variable fields

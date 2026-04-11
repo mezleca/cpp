@@ -51,7 +51,7 @@ int main(int argc, char** argv) {
     }
 
     auto s_start = retarded::now();
-    std::vector search_result = client.search_beatmaps({.query = "aaa"});
+    std::vector search_result = client.search_beatmaps({.query = "Can't Say It Back (Feint Remix)"});
 
     // thats the cpp beaulty right here
     fmt::println("took {} ms to search through {} beatmaps and found {} beatmaps",

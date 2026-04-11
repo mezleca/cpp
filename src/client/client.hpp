@@ -1,9 +1,11 @@
 #pragma once
 
+#include "boost/locale/conversion.hpp"
 #include "parsers/legacy/legacy.hpp"
 #include "../utils/query.hpp"
-#include "utils/binary.hpp"
-#include <fmt/base.h>
+#include <fmt/format.h>
+
+#include <boost/locale.hpp>
 #include <memory>
 #include <optional>
 #include <string>
@@ -60,7 +62,7 @@ struct OsuBeatmap {
           spinners(b.spinners), last_modification_time(b.last_modification_time), approach_rate(b.approach_rate),
           circle_size(b.circle_size), hp_drain(b.hp_drain), overall_difficulty(b.overall_difficulty), tags(b.tags),
           slider_velocity(b.slider_velocity), drain_time(b.drain_time), total_time(b.total_time), duration(b.duration),
-          audio_preview_time(b.audio_preview_time), difficulty_id(b.difficulty_id), beatmap_id(b.beatmap_id),
+          audio_preview_time(b.audio_preview_time), difficulty_id(b.difficulty_id), beatmap_id(b.beatmap_id), source(b.source),
           mode((Gamemode)b.mode) {
     }
     std::string searchable;
@@ -68,6 +70,7 @@ struct OsuBeatmap {
     std::string title_unicode;
     std::string audio_file_name;
     std::string md5;
+    std::string source;
     std::string osu_file_name;
     std::string tags;
 #define X(type, name, ...) type name;
@@ -86,10 +89,15 @@ struct OsuBeatmap {
     int beatmap_id = 0;
 
     void build_search() {
-        std::string target = title + " " + artist + " " + creator + " " + tags + " " + std::to_string(difficulty_id) +
-                             std::to_string(beatmap_id);
+        searchable = boost::locale::to_lower(
+            fmt::format("{} {} {} {} {} {} {} {} {} {}", 
+                title, title_unicode, artist, artist_unicode, creator, difficulty, source, tags, 
+                difficulty_id, beatmap_id
+            )
+        );
 
-        searchable = binary::normalize_and_lower(target);
+        using nm = boost::locale::norm_type;
+        searchable = boost::locale::normalize(searchable, nm::norm_nfd);
     }
 };
 
