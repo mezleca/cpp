@@ -3,9 +3,11 @@
 #include <QObject>
 #include <QStringList>
 #include <qtmetamacros.h>
+#include <qqmlintegration.h>
 
 class AppController : public QObject {
     Q_OBJECT
+    QML_ELEMENT
     Q_PROPERTY(int current_tab READ get_current_tab WRITE set_current_tab NOTIFY current_tab_changed)
     Q_PROPERTY(QStringList tabs READ get_tabs CONSTANT)
 
@@ -13,11 +15,11 @@ class AppController : public QObject {
     explicit AppController(QObject* parent = nullptr);
 
     // getters
-    int get_current_tab() {
+    int get_current_tab() const {
         return m_current_tab;
     }
 
-    QStringList get_tabs() {
+    QStringList get_tabs() const {
         return m_tabs;
     }
 

@@ -11,6 +11,10 @@ ApplicationWindow {
     height: 800
     title: "osu-stuff"
 
+    AppController {
+        id: stuff
+    }
+
     // Tabs background
     Rectangle {
         width: root.width
@@ -39,16 +43,16 @@ ApplicationWindow {
 
             // Draw each button next to each other
             Repeater {
-                model: app.tabs
-                TabButton {
+                model: stuff.tabs
+                StuffButton {
                     required property int index
                     required property string modelData
 
                     text: modelData
-                    selected: app.current_tab == index
+                    selected: stuff.current_tab == index
                     padding: 6
                     onClicked: {
-                        app.set_current_tab(index)
+                        stuff.set_current_tab(index)
                     }
                 }
             }

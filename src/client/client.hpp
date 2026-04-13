@@ -1,12 +1,9 @@
 #pragma once
 
-#include "boost/locale/conversion.hpp"
 #include "parsers/legacy/legacy.hpp"
 #include "../utils/query.hpp"
 #include "utils/binary.hpp"
 #include <fmt/format.h>
-
-#include <boost/locale.hpp>
 #include <memory>
 #include <optional>
 #include <string>

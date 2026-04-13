@@ -1,0 +1,22 @@
+{
+  "lsp": {
+    "qmljs": {
+      "binary": {
+        "path": "qmlls6",
+        "arguments": [
+          "-E",
+          "-I",
+          "src/qt/qml",
+          "-b",
+          "build"
+        ]
+      }
+    }
+  },
+  "languages": {
+    "QML": {
+      "language_servers": ["qmljs"],
+      "format_on_save": "off"
+    }
+  }
+}
