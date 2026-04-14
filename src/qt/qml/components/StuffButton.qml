@@ -7,8 +7,10 @@ Button {
     // styling
     property color text_color: Theme.text_color
     property color accent_color: Theme.accent_primary
-    property color bg_color: Theme.bg_color
+    property color bg_color: Theme.bg_secondary
     property color border_color: Theme.border_color
+
+    property bool hover_color: true;
 
     property int border_height: 2
 
@@ -24,9 +26,9 @@ Button {
 
     // Background
     background: Rectangle {
-        color: root.pressed ? Qt.darker(root.bg_color, 1.3)
+        color: root.hover_color ? root.pressed ? Qt.darker(root.bg_color, 1.3)
              : root.hovered ? Qt.lighter(root.bg_color, 1.3)
-             : root.bg_color
+             : root.bg_color : root.bg_color
     }
 
     // Bottom border

@@ -7,7 +7,7 @@ Button {
     // styling
     property color text_color: Theme.text_color
     property color accent_color: Theme.accent_primary
-    property color bg_color: Theme.bg_color
+    property color bg_color: Theme.bg_secondary
     property color border_color: Theme.border_color
 
     property int border_width: 2

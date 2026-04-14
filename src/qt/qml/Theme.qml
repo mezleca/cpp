@@ -6,7 +6,6 @@ QtObject {
     readonly property color accent_primary: "#e91e73";
     readonly property color accent_secondary: "#e91e6395";
 
-    readonly property color bg_color: "#121212";
     readonly property color bg_primary: "#1e1e1e";
     readonly property color bg_secondary: "#2a2a2a";
 
