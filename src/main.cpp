@@ -1,60 +1,33 @@
-#include "client/stable.hpp"
-#include "fmt/base.h"
-
 #include <QtQml>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QUrl>
 #include <qqml.h>
 
+#ifdef QML_SOURCE_DIR
+#include <QFileSystemWatcher>
+#include <QTimer>
+#include <QDir>
+#endif
+
+#include "boost/locale/generator.hpp"
+
 #define APP_URI "osu_stuff"
 
-int main(int argc, char** argv) {
-    using retarded = std::chrono::steady_clock;
+static void reload_qml_engine(QQmlApplicationEngine& engine, const QUrl& mainUrl) {
+    engine.clearComponentCache();
 
+    for (QObject* obj : engine.rootObjects()) {
+        obj->deleteLater();
+    }
+
+    engine.load(mainUrl);
+}
+
+int main(int argc, char** argv) {
+    // setup boost
     boost::locale::generator gen;
     std::locale::global(gen(""));
-
-    auto p_start = retarded::now();
-    StableClient client{"/mnt/osu/"};
-
-    fmt::println("took {} ms to initialize",
-                 std::chrono::duration_cast<std::chrono::milliseconds>(retarded::now() - p_start).count());
-    fmt::println("player name: {}", client.get_player_name());
-
-    auto c = client.get_collection("good shit");
-    auto c1 = client.get_collection("good shit");
-    auto b1 = client.get_beatmapset(2066317);
-    auto b2 = client.get_beatmap_by_id(4322862);
-
-    fmt::println("c1 cached: name: {} | count: {}", c->name, c->checksums.size());
-    fmt::println("c1 cached: name: {} | count: {}", c1->name, c1->checksums.size());
-
-    if (b1) {
-        fmt::println("beatmapset: {} - {} by {} ({} diffs)", b1->artist, b1->title, b1->creator, b1->beatmaps.size());
-        fmt::println("1st diff of {}: {} {}", b1->title, b1->beatmaps[0]->difficulty,
-                     b1->beatmaps[0]->overall_difficulty);
-    }
-
-    if (b2) {
-        fmt::println("same diff but directly {}: {} (id: {})", b2->title, b2->difficulty, b2->difficulty_id);
-    }
-
-    if (client.delete_collection("good shit")) {
-        fmt::println("removed collection");
-    }
-
-    if (client.delete_collection("good shit")) {
-        fmt::println("removed collection 2");
-    }
-
-    auto s_start = retarded::now();
-    std::vector search_result = client.search_beatmaps({.query = "Can't Say It Back (Feint Remix)"});
-
-    // thats the cpp beaulty right here
-    fmt::println("took {} ms to search through {} beatmaps and found {} beatmaps",
-                 std::chrono::duration_cast<std::chrono::milliseconds>(retarded::now() - s_start).count(),
-                 client.beatmap_count(), search_result.size());
 
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
@@ -62,8 +35,41 @@ int main(int argc, char** argv) {
     // register theme
     qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), APP_URI, 1, 0, "Theme");
 
-    // load main qml
+// DEBUG: load from local file and update on changes
+#ifdef QML_SOURCE_DIR
+    const QString qml_dir = QStringLiteral(QML_SOURCE_DIR);
+    const QUrl main_qml = QUrl::fromLocalFile(qml_dir + "/Main.qml");
+
+    engine.addImportPath(QDir(qml_dir).absolutePath() + "/..");
+    engine.load(main_qml);
+
+    // watch the entire dir
+    QFileSystemWatcher watcher;
+    watcher.addPath(qml_dir);
+
+    for (const QString& f : QDir(qml_dir).entryList({"*.qml"}, QDir::Files)) {
+        watcher.addPath(qml_dir + "/" + f);
+    }
+
+    QTimer debounce;
+
+    debounce.setSingleShot(true);
+    debounce.setInterval(100);
+
+    QObject::connect(&watcher, &QFileSystemWatcher::fileChanged, &debounce, qOverload<>(&QTimer::start));
+    QObject::connect(&watcher, &QFileSystemWatcher::directoryChanged, &debounce, qOverload<>(&QTimer::start));
+
+    QObject::connect(&debounce, &QTimer::timeout, [&]() {
+        qDebug() << "[hot-reload] reloading qml...";
+        reload_qml_engine(engine, main_qml);
+
+        for (const QString& f : QDir(qml_dir).entryList({"*.qml"}, QDir::Files)) {
+            watcher.addPath(qml_dir + "/" + f);
+        }
+    });
+#else
     engine.loadFromModule(APP_URI, "Main");
+#endif
 
     if (engine.rootObjects().isEmpty()) {
         return -1;

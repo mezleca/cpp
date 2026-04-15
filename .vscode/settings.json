@@ -1,0 +1,3 @@
+{
+    "qt-qml.qmlls.customArgs": ["-E", "-I", "src/qt/qml", "-b", "build"]
+}

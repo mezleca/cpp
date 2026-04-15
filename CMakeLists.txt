@@ -17,10 +17,12 @@ project(template VERSION 3.0.0 LANGUAGES CXX)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-# fallback to Release mode
+# fallback to Debug
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 # get source files
@@ -40,13 +42,8 @@ set(CPR_CURL_USE_LIBPSL FALSE)
 set(CPR_CURL_USE_LIBPSL FALSE CACHE BOOL "" FORCE)
 
 if(WIN32)
-    # force static on windows
+    # force static build on windows
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-endif()
-
-if (LINUX)
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-    set(CMAKE_CXX_FLAGS_DEBUG "-g")
 endif()
 
 # add dependencies
@@ -68,13 +65,6 @@ FetchContent_Declare(
 set(BOOST_INCLUDE_LIBRARIES locale)
 FetchContent_MakeAvailable(Boost)
 
-if(TARGET cpprealm)
-    target_compile_options(cpprealm PRIVATE
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-deprecated-literal-operator>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-private-field>
-    )
-endif()
-
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
 
 qt_standard_project_setup()
@@ -88,11 +78,35 @@ set_source_files_properties(src/qt/qml/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
+# skip qml compilation on debug (we use hot reload anyways)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_custom_target(qml_files SOURCES ${QML_FILES})
+else()
+    qt_add_qml_module(${PROJECT_NAME}
+        URI "osu_stuff"
+        VERSION 3.0
+        QML_FILES ${QML_FILES}
+    )
+endif()
+
 qt_add_qml_module(${PROJECT_NAME}
     URI "osu_stuff"
     VERSION 3.0
     QML_FILES ${QML_FILES}
+    NO_CACHEGEN
 )
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Debug>:QML_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/qt/qml">
+    $<$<CONFIG:Debug>:QML_DISABLE_DISK_CACHE=1>
+)
+
+if(TARGET cpprealm)
+    target_compile_options(cpprealm PRIVATE
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-deprecated-literal-operator>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-private-field>
+    )
+endif()
 
 if(TARGET cpr)
     target_compile_options(cpr PRIVATE
