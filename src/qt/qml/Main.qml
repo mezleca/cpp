@@ -1,137 +1,105 @@
 pragma ComponentBehavior: Bound
-
 import osu_stuff 3.0
-
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
 
 ApplicationWindow {
     id: root
+    title: "osu-stuff"
     visible: true
     width: 1200
     height: 800
-    title: "osu-stuff"
+    minimumWidth: 800
+    minimumHeight: 600
 
     property string active_tab: "index"
+
     property var tabs: ["index", "collections", "browse", "discover", "radio", "settings"]
+    property var tabs_table: ({
+        "index":       () => Qt.createComponent("tabs/IndexTab.qml"),
+        "collections": () => Qt.createComponent("tabs/CollectionsTab.qml"),
+        "browse":      () => Qt.createComponent("tabs/BrowseTab.qml"),
+        "discover":    () => Qt.createComponent("tabs/DiscoverTab.qml"),
+        "radio":       () => Qt.createComponent("tabs/RadioTab.qml"),
+        "settings":    () => Qt.createComponent("tabs/SettingsTab.qml")
+    })
 
-    Component { id: index_comp; IndexTab {} }
-    Component { id: collections_comp; CollectionsTab {} }
-    Component { id: browse_comp; BrowseTab {} }
-    Component { id: discover_comp; DiscoverTab {} }
-    Component { id: radio_comp; RadioTab {} }
-    Component { id: settings_comp; SettingsTab {} }
+    AppController { id: stuff }
 
-    property var tabs_table: {
-        "index": index_comp,
-        "collections": collections_comp,
-        "browse": browse_comp,
-        "discover": discover_comp,
-        "radio": radio_comp,
-        "settings": settings_comp
-    }
-
-    AppController {
-        id: stuff
-    }
-
-    // Background
-    Rectangle {
-        width: root.width
-        height: root.height
-
-        color: Theme.bg_primary
-    }
-
-    // App Layout
     ColumnLayout {
-        id: app_layout
+        anchors.fill: parent
+        spacing: 0
 
-        Layout.fillWidth: true
-        Layout.fillHeight: true
-
-        // Tabs header
+        // header
         Rectangle {
-            implicitWidth: root.width
-            implicitHeight: row.implicitHeight
+            Layout.fillWidth: true
+            implicitHeight: header_row.implicitHeight
+
             color: Theme.bg_secondary
 
             RowLayout {
-                id: row
-                width: root.width
+                id: header_row
+                width: parent.width
                 spacing: 4
 
-                Item { implicitWidth: 16 } // spacer
+                Item { implicitWidth: 16 }
 
-                // Draw Title
+                // title
                 Text {
                     text: "osu-stuff"
                     color: Theme.accent_primary
                     font.bold: true
-                    font.pixelSize: 15
-
-                    // TODO: replace with TitleComponent
+                    font.pixelSize: 16
                     MouseArea {
                         anchors.fill: parent
-                        onClicked: {
-                            root.active_tab = "index"
-                        }
+                        onClicked: root.active_tab = "index"
                     }
                 }
 
-                Item { implicitWidth: 16 } // spacer
+                Item { implicitWidth: 16 }
 
-                // Draw tab buttons
+                // tab buttons
                 Repeater {
                     model: root.tabs
                     StuffButton {
                         required property int index
                         required property string modelData
-
                         visible: modelData !== "index"
                         text: modelData
                         selected: root.active_tab === modelData
                         padding: 6
                         hover_color: false
-                        onClicked: {
-                            root.active_tab = modelData
-                        }
+                        onClicked: root.active_tab = modelData
                     }
                 }
 
-                // Fill th rest of the remaining width
                 Item { Layout.fillWidth: true }
-
-                // Spacer
                 Item { implicitWidth: 16 }
             }
 
-            // Bottom border
             Rectangle {
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
                 anchors.right: parent.right
                 height: 1
-                color: Theme.border_color
+                color: Theme.border_secondary
             }
         }
 
-        // Tab content
-        Rectangle {
-            id: tab_container
-
+        // tab content
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
             Repeater {
                 model: root.tabs
-
                 delegate: Loader {
                     required property int index
                     required property string modelData
 
-                    sourceComponent: root.tabs_table[modelData]
+                    anchors.fill: parent
+                    sourceComponent: root.tabs_table[modelData]()
                     visible: root.active_tab === modelData
                     active: visible || item !== null
                 }

@@ -9,7 +9,8 @@ QtObject {
     readonly property color bg_primary: "#1e1e1e";
     readonly property color bg_secondary: "#2a2a2a";
 
-    readonly property color border_color: "#262626";
+    readonly property color border_primary: "#262626";
+    readonly property color border_secondary: "#404040";
 
     readonly property color tab_color: "#333333";
     readonly property color tab_secondary: "#242424";

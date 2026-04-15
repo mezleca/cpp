@@ -8,11 +8,11 @@ Button {
     property color text_color: Theme.text_color
     property color accent_color: Theme.accent_primary
     property color bg_color: Theme.bg_secondary
-    property color border_color: Theme.border_color
+    property color border_color: Theme.border_primary
 
     property bool hover_color: true;
 
-    property int border_height: 2
+    property int border_height: 3
 
     // extra
     property bool selected: false

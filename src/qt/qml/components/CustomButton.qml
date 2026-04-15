@@ -8,7 +8,7 @@ Button {
     property color text_color: Theme.text_color
     property color accent_color: Theme.accent_primary
     property color bg_color: Theme.bg_secondary
-    property color border_color: Theme.border_color
+    property color border_color: Theme.border_primary
 
     property int border_width: 2
     property int border_radius: 4
@@ -17,7 +17,7 @@ Button {
     property bool loading: false
     property bool selected: false
 
-    property int font_size: 12
+    property int font_size: 13
 
     id: root
     text: "button"

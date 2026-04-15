@@ -16,13 +16,13 @@ namespace realm {
     };
 
     REALM_EMBEDDED_SCHEMA(BeatmapDifficulty, DrainRate, CircleSize, OverallDifficulty, ApproachRate, SliderMultiplier,
-                          SliderTickRate)
+                          SliderTickRate);
 
     struct BeatmapUserSettings {
         double Offset = 0.0;
     };
 
-    REALM_EMBEDDED_SCHEMA(BeatmapUserSettings, Offset)
+    REALM_EMBEDDED_SCHEMA(BeatmapUserSettings, Offset);
 
     struct RealmUser {
         int64_t OnlineID = 0;
@@ -30,7 +30,7 @@ namespace realm {
         std::optional<std::string> CountryCode;
     };
 
-    REALM_EMBEDDED_SCHEMA(RealmUser, OnlineID, Username, CountryCode)
+    REALM_EMBEDDED_SCHEMA(RealmUser, OnlineID, Username, CountryCode);
 
     struct Ruleset {
         realm::primary_key<std::optional<std::string>> ShortName;
@@ -41,20 +41,20 @@ namespace realm {
         bool Available = false;
     };
 
-    REALM_SCHEMA(Ruleset, ShortName, OnlineID, Name, InstantiationInfo, LastAppliedDifficultyVersion, Available)
+    REALM_SCHEMA(Ruleset, ShortName, OnlineID, Name, InstantiationInfo, LastAppliedDifficultyVersion, Available);
 
     struct File {
         realm::primary_key<std::optional<std::string>> Hash;
     };
 
-    REALM_SCHEMA(File, Hash)
+    REALM_SCHEMA(File, Hash);
 
     struct RealmNamedFileUsage {
         File* File = nullptr;
         std::optional<std::string> Filename;
     };
 
-    REALM_EMBEDDED_SCHEMA(RealmNamedFileUsage, File, Filename)
+    REALM_EMBEDDED_SCHEMA(RealmNamedFileUsage, File, Filename);
 
     struct BeatmapMetadata {
         std::optional<std::string> Title;
@@ -71,7 +71,7 @@ namespace realm {
     };
 
     REALM_SCHEMA(BeatmapMetadata, Title, TitleUnicode, Artist, ArtistUnicode, Author, Source, Tags, PreviewTime,
-                 AudioFile, BackgroundFile, UserTags)
+                 AudioFile, BackgroundFile, UserTags);
 
     struct BeatmapCollection {
         realm::primary_key<realm::uuid> ID;
@@ -80,7 +80,7 @@ namespace realm {
         std::chrono::time_point<std::chrono::system_clock> LastModified;
     };
 
-    REALM_SCHEMA(BeatmapCollection, ID, Name, BeatmapMD5Hashes, LastModified)
+    REALM_SCHEMA(BeatmapCollection, ID, Name, BeatmapMD5Hashes, LastModified);
 
     struct Beatmap;
 
@@ -99,7 +99,7 @@ namespace realm {
     };
 
     REALM_SCHEMA(BeatmapSet, ID, OnlineID, DateAdded, DateSubmitted, DateRanked, Beatmaps, Files, Status, DeletePending,
-                 Hash, Protected)
+                 Hash, Protected);
 
     struct Beatmap {
         realm::primary_key<realm::uuid> ID;
@@ -129,5 +129,5 @@ namespace realm {
 
     REALM_SCHEMA(Beatmap, ID, DifficultyName, Ruleset, Difficulty, Metadata, UserSettings, BeatmapSet, OnlineID, Length,
                  BPM, Hash, StarRating, MD5Hash, OnlineMD5Hash, LastLocalUpdate, LastOnlineUpdate, Status, Hidden,
-                 EndTimeObjectCount, TotalObjectCount, LastPlayed, BeatDivisor, EditorTimestamp)
+                 EndTimeObjectCount, TotalObjectCount, LastPlayed, BeatDivisor, EditorTimestamp);
 }
