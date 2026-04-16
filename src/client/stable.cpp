@@ -28,11 +28,11 @@ StableClient::StableClient(std::filesystem::path base) : m_location(base) {
     path cl_location = base / "collection.db";
 
     if (!legacy_parser::parse(db_location, &m_stable_database)) {
-        throw std::runtime_error(fmt::format("failed to parse {}", db_location.c_str()));
+        throw std::runtime_error(fmt::format("failed to parse {}", db_location.string()));
     }
 
-    if (!legacy_collection_parser::parse(cl_location, &m_stable_collection)) {
-        throw std::runtime_error(fmt::format("failed to parse {}", cl_location.c_str()));
+    if (!legacy_collection_parser::parse(cl_location.string(), &m_stable_collection)) {
+        throw std::runtime_error(fmt::format("failed to parse {}", cl_location.string()));
     }
 
     // build beatmaps / beatmapsets

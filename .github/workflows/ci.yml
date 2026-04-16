@@ -1,21 +1,22 @@
 name: ci
+
 on:
-    pull_request:
+    push:
+        branches:
+          - "osu-stuff-qt"
     workflow_dispatch:
 
 jobs:
     build-test:
         env:
-            QT_VERSION: 6.6.2
+            QT_VERSION: 6.10.3
         strategy:
+            fail-fast: false
             matrix:
                 include:
                     - os: ubuntu-latest
-                      qt_arch: 'gcc_64'
+                      qt_arch: 'linux_gcc_64'
                       target: linux
-                    - os: ubuntu-latest
-                      qt_arch: 'win64_mingw'
-                      target: windows
                     - os: windows-latest
                       qt_arch: 'win64_mingw'
                       target: windows
@@ -30,7 +31,15 @@ jobs:
               if: runner.os == 'Linux'
               run: |
                 sudo apt-get update
-                sudo apt-get install -y build-essential cmake ninja-build clang mingw-w64 libz-mingw-w64-dev
+                sudo apt-get install -y git \
+                  build-essential \
+                  cmake \
+                  ninja-build \
+                  clang \
+                  pkg-config \
+                  libicu-dev \
+                  libcurl4-openssl-dev \
+                  zlib1g-dev
 
             - name: setup CMake
               uses: lukka/get-cmake@latest
@@ -47,13 +56,6 @@ jobs:
                 arch: ${{ matrix.qt_arch }}
                 cache: true
 
-            - name: install Qt6 (linux cross)
-              if: runner.os == 'Linux' && matrix.target == 'windows'
-              run: |
-                python -m pip install aqtinstall==3.3.*
-                python -m aqt install-qt windows desktop $QT_VERSION win64_mingw --outputdir ${{ github.workspace }}/Qt
-                python -m aqt install-qt linux desktop $QT_VERSION gcc_64 --outputdir ${{ github.workspace }}/Qt-host
-
             - name: install system dependencies (windows)
               if: runner.os == 'Windows'
               uses: msys2/setup-msys2@v2
@@ -61,8 +63,16 @@ jobs:
                   msystem: MINGW64
                   update: true
                   install: >-
-                      base-devel
-                      mingw-w64-x86_64-toolchain
+                    base-devel
+                    mingw-w64-x86_64-toolchain
+                    mingw-w64-x86_64-cmake
+                    mingw-w64-x86_64-ninja
+                    mingw-w64-x86_64-pkg-config
+                    mingw-w64-x86_64-icu
+                    mingw-w64-x86_64-curl
+                    mingw-w64-x86_64-openssl
+                    mingw-w64-x86_64-zlib
+                    git
 
             - name: cache ccache
               uses: actions/cache@v4
@@ -75,16 +85,7 @@ jobs:
             - name: export Qt vars (linux)
               if: runner.os == 'Linux' && matrix.target == 'linux'
               run: |
-                echo "CMAKE_PREFIX_PATH=${QT_ROOT_DIR}" >> $GITHUB_ENV
                 echo "Qt6_DIR=${QT_ROOT_DIR}/lib/cmake/Qt6" >> $GITHUB_ENV
-              shell: bash
-
-            - name: export Qt vars (linux cross)
-              if: runner.os == 'Linux' && matrix.target == 'windows'
-              run: |
-                echo "QT_MINGW_PREFIX=${{ github.workspace }}/Qt/${QT_VERSION}/mingw_64" >> $GITHUB_ENV
-                echo "QT_HOST_PATH=${{ github.workspace }}/Qt-host/${QT_VERSION}/gcc_64" >> $GITHUB_ENV
-                echo "QT_HOST_PATH_CMAKE_DIR=${{ github.workspace }}/Qt-host/${QT_VERSION}/gcc_64/lib/cmake" >> $GITHUB_ENV
               shell: bash
 
             - name: export Qt vars (windows)
@@ -94,19 +95,20 @@ jobs:
                 "QT_HOST_PATH=$env:QT_ROOT_DIR" | Out-File -FilePath $env:GITHUB_ENV -Append
                 "QT_HOST_PATH_CMAKE_DIR=$env:QT_ROOT_DIR\\lib\\cmake" | Out-File -FilePath $env:GITHUB_ENV -Append
                 "C:\\msys64\\mingw64\\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+                "C:\\Program Files\\Git\\cmd" | Out-File -FilePath $env:GITHUB_PATH -Append
               shell: pwsh
 
-            - name: configure (linux)
-              if: runner.os == 'Linux' && matrix.target == 'linux'
-              run: |
-                python ez configure --platform=linux
-
-            - name: configure (windows)
-              if: matrix.target == 'windows'
-              run: |
-                python ez configure --platform=windows
-
-            - name: build (ez)
+            - name: build (linux)
+              if: matrix.target == 'linux'
               run: |
                 python ez init
-                python ez build
+                python ez clean
+                python ez build --type="release"
+
+            - name: build (windows)
+              if: matrix.target == 'windows'
+              shell: msys2 {0}
+              run: |
+                python ez init
+                python ez clean
+                python ez build --type="release"

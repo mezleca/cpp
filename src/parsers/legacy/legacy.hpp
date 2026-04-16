@@ -4,6 +4,7 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <filesystem>
 
 struct LegacyFloatPair {
     int mod_combination = 0;
@@ -132,6 +133,6 @@ struct LegacyReplay : LegacyScoreBase {
 };
 
 namespace legacy_parser {
-    bool parse(const std::string location, OsuLegacyDatabase* data);
-    bool write(const std::string location, OsuLegacyDatabase* data);
+    bool parse(std::filesystem::path& location, OsuLegacyDatabase* data);
+    bool write(std::filesystem::path& location, OsuLegacyDatabase* data);
 };

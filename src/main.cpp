@@ -1,3 +1,4 @@
+#include "client/stable.hpp"
 #include <QtQml>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
@@ -9,8 +10,6 @@
 #include <QTimer>
 #include <QDir>
 #endif
-
-#include "boost/locale/generator.hpp"
 
 #define APP_URI "osu_stuff"
 
@@ -25,15 +24,12 @@ static void reload_qml_engine(QQmlApplicationEngine& engine, const QUrl& mainUrl
 }
 
 int main(int argc, char** argv) {
-    // setup boost
-    boost::locale::generator gen;
-    std::locale::global(gen(""));
-
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
 
     // register theme
     qmlRegisterSingletonType(QUrl("qrc:/Theme.qml"), APP_URI, 1, 0, "Theme");
+    StableClient client("/mnt/osu");
 
 // DEBUG: load from local file and update on changes
 #ifdef QML_SOURCE_DIR

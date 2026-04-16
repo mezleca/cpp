@@ -193,10 +193,10 @@ static LegacyBeatmap read_beatmap(binary::BinaryCursor& cursor, int version) {
     return beatmap;
 }
 
-bool legacy_parser::parse(const std::string location, OsuLegacyDatabase* data) {
+bool legacy_parser::parse(std::filesystem::path& location, OsuLegacyDatabase* data) {
     std::vector<uint8_t> buffer;
 
-    if (!binary::read_file_buffer(location, buffer)) {
+    if (!binary::read_file_buffer(location.string(), buffer)) {
         return false;
     }
 
@@ -231,7 +231,7 @@ bool legacy_parser::parse(const std::string location, OsuLegacyDatabase* data) {
     }
 }
 
-bool legacy_parser::write(const std::string location, OsuLegacyDatabase* data) {
+bool legacy_parser::write(std::filesystem::path& location, OsuLegacyDatabase* data) {
     if (data == nullptr || location.empty()) {
         return false;
     }
@@ -346,7 +346,7 @@ bool legacy_parser::write(const std::string location, OsuLegacyDatabase* data) {
 
     binary::write_i32(buffer, data->permissions);
 
-    if (!binary::write_file_buffer(location, buffer)) {
+    if (!binary::write_file_buffer(location.string(), buffer)) {
         return false;
     }
 

@@ -56,7 +56,7 @@ std::vector<OsuBeatmap*> Client::search_beatmaps(OsuSearchData data) {
     std::vector<OsuBeatmap*> result;
     QueryState state;
 
-    std::string a = boost::locale::to_lower(data.query);
+    std::string a = binary::lower_if_possible(data.query);
     std::string_view normalized_query(a);
 
     ParsedQuery p_query = query::parse(normalized_query);

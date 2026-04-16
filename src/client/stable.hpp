@@ -23,7 +23,7 @@ class StableClient : public Client {
     OsuBeatmapSet* get_beatmapset(int id) override;
 
   private:
-    std::string m_location = "";
+    std::filesystem::path m_location;
 
     OsuLegacyCollection m_stable_collection;
     OsuLegacyDatabase m_stable_database;

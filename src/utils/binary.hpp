@@ -5,12 +5,12 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <vector>
 #include <charconv>
-#include <boost/locale.hpp>
-
-#include "boost/locale/conversion.hpp"
+#include <QString>
+#include <QByteArray>
 #include "fmt/base.h"
 
 namespace binary {
@@ -339,15 +339,19 @@ namespace binary {
         }
     }
 
-    inline std::string normalize_and_lower(std::string s) {
-        std::string normalized = boost::locale::normalize(s, boost::locale::norm_type::norm_nfd);
-        return boost::locale::to_lower(normalized);
+    inline std::string normalize_and_lower(std::string_view s) {
+        QString q = QString::fromUtf8(s.data(), static_cast<int>(s.size()));
+        q = q.normalized(QString::NormalizationForm_D).toCaseFolded();
+        QByteArray utf8 = q.toUtf8();
+        return std::string(utf8.constData(), static_cast<size_t>(utf8.size()));
     }
 
     template <typename T>
     inline T lower_if_possible(T value) {
         if constexpr (std::is_same_v<T, std::string>) {
-            return boost::locale::to_lower(value);
+            QString q = QString::fromUtf8(value.data(), static_cast<int>(value.size()));
+            QByteArray utf8 = q.toCaseFolded().toUtf8();
+            return std::string(utf8.constData(), static_cast<size_t>(utf8.size()));
         } else {
             return value;
         }

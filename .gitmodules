@@ -7,9 +7,6 @@
 [submodule "vendor/fmt"]
 	path = vendor/fmt
 	url = https://github.com/fmtlib/fmt.git
-[submodule "vendor/realm-cpp"]
-	path = vendor/realm-cpp
-	url = https://github.com/mezleca/realm-cpp.git
 [submodule "vendor/miniz"]
 	path = vendor/miniz
 	url = https://github.com/richgel999/miniz

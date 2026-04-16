@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 
 # gcc on windows
-if(WIN32 AND NOT DEFINED CMAKE_TOOLCHAIN_FILE AND NOT DEFINED CMAKE_C_COMPILER AND NOT DEFINED CMAKE_CXX_COMPILER)
+if(WIN32 AND NOT DEFINED CMAKE_C_COMPILER AND NOT DEFINED CMAKE_CXX_COMPILER)
     set(CMAKE_C_COMPILER "gcc")
     set(CMAKE_CXX_COMPILER "g++")
 endif()
 
 # clang on linux
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux" AND NOT DEFINED CMAKE_TOOLCHAIN_FILE AND NOT DEFINED CMAKE_C_COMPILER AND NOT DEFINED CMAKE_CXX_COMPILER)
+if (UNIX AND NOT DEFINED CMAKE_C_COMPILER AND NOT DEFINED CMAKE_CXX_COMPILER)
     set(CMAKE_C_COMPILER /usr/bin/clang)
     set(CMAKE_CXX_COMPILER /usr/bin/clang++)
 endif()
@@ -21,8 +21,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 # fallback to Debug
-if(NOT CMAKE_BUILD_TYPE)
+if(NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
+endif()
+
+if(WIN32)
+    # force static build on windows
+    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
 endif()
 
 # get source files
@@ -40,11 +45,10 @@ set(REALM_CPP_NO_TESTS ON CACHE BOOL "" FORCE)
 # not that important (i think) and also requires meson
 set(CPR_CURL_USE_LIBPSL FALSE)
 set(CPR_CURL_USE_LIBPSL FALSE CACHE BOOL "" FORCE)
+set(CPR_USE_SYSTEM_CURL ON CACHE BOOL "" FORCE)
 
-if(WIN32)
-    # force static build on windows
-    set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
-endif()
+find_package(CURL REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
 
 # add dependencies
 add_subdirectory(vendor/fmt)
@@ -52,20 +56,23 @@ add_subdirectory(vendor/cpr)
 add_subdirectory(vendor/magic_enum)
 add_subdirectory(vendor/json)
 add_subdirectory(vendor/miniz)
-add_subdirectory(vendor/realm-cpp)
 
 include(FetchContent)
 
-FetchContent_Declare(
-    Boost
-    URL https://github.com/boostorg/boost/releases/download/boost-1.87.0/boost-1.87.0-cmake.tar.xz
-    DOWNLOAD_EXTRACT_TIMESTAMP ON
-)
+# download realm-cpp
+if(WIN32)
+    FetchContent_Declare(
+        cpprealm
+        URL "https://github.com/mezleca/rel-builds/releases/download/realm-cpp-2.2.0/realm-cpp-2.2.0-x64-windows-mingw-static.tar.gz"
+    )
+else()
+    FetchContent_Declare(
+        cpprealm
+        URL "https://github.com/mezleca/rel-builds/releases/download/realm-cpp-2.2.0/realm-cpp-2.2.0-x64-linux-clang-shared.tar.gz"
+    )
+endif()
 
-set(BOOST_INCLUDE_LIBRARIES locale)
-FetchContent_MakeAvailable(Boost)
-
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Qml Quick)
+FetchContent_MakeAvailable(cpprealm)
 
 qt_standard_project_setup()
 
@@ -81,32 +88,18 @@ set_source_files_properties(src/qt/qml/Theme.qml
 # skip qml compilation on debug (we use hot reload anyways)
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_custom_target(qml_files SOURCES ${QML_FILES})
-else()
-    qt_add_qml_module(${PROJECT_NAME}
-        URI "osu_stuff"
-        VERSION 3.0
-        QML_FILES ${QML_FILES}
-    )
 endif()
 
 qt_add_qml_module(${PROJECT_NAME}
     URI "osu_stuff"
     VERSION 3.0
     QML_FILES ${QML_FILES}
-    NO_CACHEGEN
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:QML_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/src/qt/qml">
     $<$<CONFIG:Debug>:QML_DISABLE_DISK_CACHE=1>
 )
-
-if(TARGET cpprealm)
-    target_compile_options(cpprealm PRIVATE
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-deprecated-literal-operator>
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-unused-private-field>
-    )
-endif()
 
 if(TARGET cpr)
     target_compile_options(cpr PRIVATE
@@ -124,20 +117,29 @@ if(DEFINED OUTPUT_NAME)
 endif()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    fmt::fmt
-    nlohmann_json
-    cpr
-    cpprealm
-    miniz
-    magic_enum
-    Boost::locale
+    CURL::libcurl
     Qt6::Core
     Qt6::Gui
     Qt6::Qml
     Qt6::Quick
+    fmt::fmt
+    cpprealm
+    nlohmann_json
+    cpr
+    miniz
+    magic_enum
+)
+
+target_link_directories(${PROJECT_NAME} PRIVATE
+    # prebuilts
+    ${cpprealm_SOURCE_DIR}/lib
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE
+    # prebuilts
+    ${cpprealm_SOURCE_DIR}/include
+
+    # other
     ${CMAKE_CURRENT_SOURCE_DIR}/vendor/...
     ${CMAKE_CURRENT_SOURCE_DIR}/src
     ${CMAKE_CURRENT_SOURCE_DIR}/src/qt
